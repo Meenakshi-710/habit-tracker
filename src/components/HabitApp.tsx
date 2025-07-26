@@ -138,7 +138,7 @@ function HabitApp() {
   activeTab={activeTab}
   onTabChange={handleTabChange}
   onAddHabit={handleAddHabit}
-  onSelectDate={(date) => setSelectedDate(date)}
+  onSelectDate={(date: string | null) => setSelectedDate(date)}
   isCalendarConnected={isCalendarConnected}
   completedCount={completedCount}
   totalHabits={totalHabits}
