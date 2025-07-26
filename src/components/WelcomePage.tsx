@@ -11,7 +11,7 @@ const WelcomePage = ({ onGetStarted }: WelcomePageProps) => {
     <div className="min-h-screen flex flex-col items-center px-10 py-16 bg-gradient-to-br from-white to-gray-100 dark:from-black dark:to-gray-900 text-center">
       <div className="flex flex-col items-center gap-6">
         <img
-          src="Assets/logo.png"
+          src="/logo.png"
           alt="App Logo"
           width={120}
           height={120}
