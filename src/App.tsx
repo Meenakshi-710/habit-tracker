@@ -1,11 +1,17 @@
-import Header from "./components/header";
-import Hello from "./components/hello";
+import { useState } from "react";
+import WelcomePage from "./components/WelcomePage";
+import HabitApp from "./components/HabitApp"; // renamed Habit Tracker component
 
 function App() {
+  const [started, setStarted] = useState(false);
+
   return (
-    <div className="w-96">
-      <Header />
-      <Hello />
+    <div className="">
+      {!started ? (
+        <WelcomePage onGetStarted={() => setStarted(true)} />
+      ) : (
+        <HabitApp />
+      )}
     </div>
   );
 }
