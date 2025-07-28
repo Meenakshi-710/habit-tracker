@@ -56,7 +56,7 @@ const WelcomePage = ({ onGetStarted }: WelcomePageProps) => {
             localStorage.setItem("user-name", name);
             onGetStarted(name);
           }}
-          className="mt-8 bg-black dark:bg-white text-white dark:text-black text-xl font-medium py-4 px-10 rounded-full shadow-md hover:scale-105 transition-transform"
+          className="mt-8 bg-black dark:bg-white text-white dark:text-black text-xl font-medium py-4 px-10 rounded-full shadow-md hover:scale-105 transition-transform hover:bg-pink-600"
         >
           Get Started
         </button>

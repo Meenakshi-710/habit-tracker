@@ -2,11 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar hiding class */
+/* Set fixed dimensions for the popup */
+html, body, #root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Optional: hide scrollbars for cleaner look */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;     /* Firefox */

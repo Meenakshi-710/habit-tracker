@@ -5,6 +5,8 @@ import {
   Trash2,
   TrendingUp,
   Sparkles,
+  AlarmClock,
+  Moon,
 } from "lucide-react";
 import { Habit } from "../types/habit";
 import {
@@ -34,6 +36,9 @@ export default function HabitCard({
   const today = new Date().toDateString();
   const isCompleted = habit.completedDates.includes(today);
 
+  const isDefaultTimeHabit =
+    habit.id === "wake-time" || habit.id === "winddown-time";
+
   const categoryIcons: { [key: string]: JSX.Element } = {
     "Health & Fitness": <FaRunning className="text-pink-600" />,
     Learning: <FaBook className="text-blue-600" />,
@@ -46,32 +51,48 @@ export default function HabitCard({
   };
 
   const getStreakCount = () => {
-  const sortedDates = habit.completedDates
-    .map(dateStr => new Date(dateStr))
-    .sort((a, b) => b.getTime() - a.getTime());
+    const sortedDates = habit.completedDates
+      .map((dateStr) => new Date(dateStr))
+      .sort((a, b) => b.getTime() - a.getTime());
 
-  let streak = 0;
-  const currentDate = new Date();
+    let streak = 0;
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
 
-  for (let i = 0; i < sortedDates.length; i++) {
-    const date = sortedDates[i];
-    const dayDiff = Math.floor(
-      (currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    for (let i = 0; i < sortedDates.length; i++) {
+      const date = new Date(sortedDates[i]);
+      date.setHours(0, 0, 0, 0); // Reset to start of day
+      
+      const dayDiff = Math.floor(
+        (currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+      );
 
-    if (dayDiff === 0 || dayDiff === 1) {
-      streak++;
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else if (dayDiff > 1) {
-      break;
+      if (dayDiff === streak) {
+        streak++;
+      } else {
+        break;
+      }
     }
-  }
 
-  return streak;
-};
-
+    return streak;
+  };
 
   const streak = getStreakCount();
+
+  // Format datetime for display
+  const formatDateTime = (dateTime: string) => {
+    try {
+      const date = new Date(dateTime);
+      return date.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch (error) {
+      console.warn("Error formatting date:", dateTime, error);
+      return "Invalid date";
+    }
+  };
 
   return (
     <div
@@ -104,8 +125,6 @@ export default function HabitCard({
             ) : (
               <Circle size={20} />
             )}
-
-            {/* Ripple effect */}
             <div
               className={`absolute inset-0 rounded-full transition-all duration-300 ${
                 isCompleted ? "bg-emerald-400/20 scale-150 opacity-0" : ""
@@ -125,9 +144,19 @@ export default function HabitCard({
               >
                 {habit.name}
               </h3>
-              <span className="text-xl" title={habit.category}>
-                {categoryIcons[habit.category] || "⭐"}
-              </span>
+
+              {isDefaultTimeHabit ? (
+                habit.id === "wake-time" ? (
+                  <AlarmClock size={18} className="text-orange-500" />
+                ) : (
+                  <Moon size={18} className="text-indigo-500" />
+                )
+              ) : (
+                <span className="text-xl" title={habit.category}>
+                  {categoryIcons[habit.category] || "⭐"}
+                </span>
+              )}
+
               {isCompleted && (
                 <Sparkles
                   size={16}
@@ -137,42 +166,43 @@ export default function HabitCard({
             </div>
 
             {/* DateTime display */}
-            <div className="text-sm text-gray-500">
-              {new Date(habit.dateTime).toLocaleString(undefined, {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
+            <div className="text-sm text-gray-500 mb-1">
+              {formatDateTime(habit.dateTime)}
             </div>
 
             <div className="flex items-center space-x-4 text-sm">
               <span className="text-gray-500 font-medium">
                 {habit.category}
               </span>
-              <div className="flex items-center space-x-1 text-orange-600">
-                <TrendingUp size={14} />
-                <span className="font-semibold">{streak} day streak</span>
-              </div>
+              {streak > 0 && (
+                <div className="flex items-center space-x-1 text-orange-600">
+                  <TrendingUp size={14} />
+                  <span className="font-semibold">{streak} day streak</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
-          <button
-            onClick={() => onEdit(habit)}
-            className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-110"
-            title="Edit habit"
-          >
-            <Edit2 size={16} />
-          </button>
-          <button
-            onClick={() => onDelete(habit.id)}
-            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-110"
-            title="Delete habit"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
+        {/* Action Buttons – hide for default time habits */}
+        {!isDefaultTimeHabit && (
+          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+            <button
+              onClick={() => onEdit(habit)}
+              className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-110"
+              title="Edit habit"
+            >
+              <Edit2 size={16} />
+            </button>
+            <button
+              onClick={() => onDelete(habit.id)}
+              className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-110"
+              title="Delete habit"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

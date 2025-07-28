@@ -55,15 +55,33 @@ export default function HabitForm({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
 
+  // Helper function to convert UTC datetime to local date and time
+  const parseDateTime = (dateTime: string) => {
+    const date = new Date(dateTime);
+    const localDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const localTime = date.toTimeString().slice(0, 5); // HH:MM
+    return { localDate, localTime };
+  };
+
+  // Helper function to convert local date and time to UTC ISO string
+  const createDateTime = (dateStr: string, timeStr: string): string => {
+    // Create a date object in the local timezone
+    const localDateTime = new Date(`${dateStr}T${timeStr}:00`);
+    
+    // Convert to UTC ISO string
+    return localDateTime.toISOString();
+  };
+
   useEffect(() => {
     if (editingHabit) {
       setName(editingHabit.name);
       setCategory(editingHabit.category);
       setColor(editingHabit.color);
+      
       if ("dateTime" in editingHabit && editingHabit.dateTime) {
-        const [editDate, editTime] = editingHabit.dateTime.split("T");
-        setDate(editDate);
-        setTime(editTime?.slice(0, 5));
+        const { localDate, localTime } = parseDateTime(editingHabit.dateTime);
+        setDate(localDate);
+        setTime(localTime);
       }
     } else {
       const today = new Date().toISOString().split("T")[0];
@@ -91,7 +109,18 @@ export default function HabitForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() && date && time) {
-      const dateTime = `${date}T${time}`;
+      // Convert local date and time to UTC ISO string
+      const dateTime = createDateTime(date, time);
+      
+      console.log("🔄 Form submission:", {
+        inputDate: date,
+        inputTime: time,
+        generatedDateTime: dateTime,
+        parsedBack: new Date(dateTime).toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata"
+        })
+      });
+      
       onSubmit({ name: name.trim(), category, color, dateTime });
       onClose();
     }
@@ -183,6 +212,19 @@ export default function HabitForm({
               />
             </div>
           </div>
+
+          {/* Preview of scheduled time */}
+          {date && time && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Scheduled for:</strong> {new Date(createDateTime(date, time)).toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                  dateStyle: "full",
+                  timeStyle: "short"
+                })}
+              </p>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex justify-end gap-3 pt-4">

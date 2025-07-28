@@ -1,17 +1,23 @@
 import { useState } from "react";
 import WelcomePage from "./components/WelcomePage";
-import HabitApp from "./components/HabitApp"; // renamed Habit Tracker component
+import StepOne from "./components/StepOne";
+import HabitApp from "./components/HabitApp";
 
 function App() {
-  const [started, setStarted] = useState(false);
+  const [step, setStep] = useState<"welcome" | "stepOne" | "app">("welcome");
 
   return (
     <div className="">
-      {!started ? (
-        <WelcomePage onGetStarted={() => setStarted(true)} />
-      ) : (
-        <HabitApp />
+      {step === "welcome" && (
+        <WelcomePage onGetStarted={() => setStep("stepOne")} />
       )}
+      {step === "stepOne" && (
+        <StepOne
+          onBack={() => setStep("welcome")}
+          onContinue={() => setStep("app")}
+        />
+      )}
+      {step === "app" && <HabitApp />}
     </div>
   );
 }

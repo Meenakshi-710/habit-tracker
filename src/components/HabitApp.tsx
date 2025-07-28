@@ -1,13 +1,17 @@
 import { useState, useCallback, useEffect } from "react";
 import { Habit } from "../types/habit";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import Header from "./header";
+import Header from "./Header";
 import HabitList from "./HabitList";
 import HabitForm from "./HabitForm";
 import OnboardingFlow from "./OnboardingFlow";
 
 function HabitApp() {
   const [habits, setHabits] = useLocalStorage<Habit[]>("habits", []);
+  const [defaultCompleted, setDefaultCompleted] = useLocalStorage<string[]>(
+    "default-completed",
+    []
+  );
   const [activeTab, setActiveTab] = useState("habits");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
@@ -15,6 +19,85 @@ function HabitApp() {
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const todayDateString = new Date().toDateString();
+  const wakeTime = localStorage.getItem("wake-time");
+  const windTime = localStorage.getItem("winddown-time");
+
+  const convertLocalTimeToUTC = (
+    dateString: string,
+    timeString: string
+  ): string => {
+    const localDateTime = new Date(`${dateString}T${timeString}:00`);
+    return localDateTime.toISOString();
+  };
+
+  const defaultTimeHabits: Habit[] = [];
+
+  if (wakeTime) {
+    const todayDate = new Date().toISOString().split("T")[0];
+    defaultTimeHabits.push({
+      id: "wake-time",
+      name: "Wake Up",
+      category: "Health & Fitness",
+      color: "#FFA500",
+      dateTime: convertLocalTimeToUTC(todayDate, wakeTime),
+      completedDates: defaultCompleted.includes("wake-time")
+        ? [todayDateString]
+        : [],
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  if (windTime) {
+    const todayDate = new Date().toISOString().split("T")[0];
+    defaultTimeHabits.push({
+      id: "winddown-time",
+      name: "Wind Down",
+      category: "Mindfulness",
+      color: "#9370DB",
+      dateTime: convertLocalTimeToUTC(todayDate, windTime),
+      completedDates: defaultCompleted.includes("winddown-time")
+        ? [todayDateString]
+        : [],
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  const allHabits = [...defaultTimeHabits, ...habits];
+  const totalHabits = allHabits.length;
+  const completedCount = allHabits.filter((habit) =>
+    habit.completedDates.includes(todayDateString)
+  ).length;
+
+  console.log("🧪 allHabits before syncing to chrome.storage:", allHabits);
+
+  useEffect(() => {
+    const syncHabitsToBackground = () => {
+      if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(
+          {
+            type: "SAVE_HABITS",
+            payload: allHabits,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Failed to sync habits:",
+                chrome.runtime.lastError.message
+              );
+            } else {
+              console.log("✅ Synced habits to background:", response);
+            }
+          }
+        );
+      } else {
+        console.warn("⚠️ chrome.runtime is not available");
+      }
+    };
+
+    syncHabitsToBackground();
+  }, [allHabits]);
 
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem("onboarding-completed");
@@ -28,16 +111,7 @@ function HabitApp() {
     }
   }, []);
 
-  const totalHabits = habits.length;
-
-  const completedCount = habits.filter((habit) =>
-    habit.completedDates.includes(new Date().toDateString())
-  ).length;
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-  };
-
+  const handleTabChange = (tab: string) => setActiveTab(tab);
   const generateId = () =>
     Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
@@ -77,6 +151,16 @@ function HabitApp() {
   const toggleHabitComplete = useCallback(
     (habitId: string) => {
       const today = new Date().toDateString();
+
+      if (habitId === "wake-time" || habitId === "winddown-time") {
+        const isAlreadyDone = defaultCompleted.includes(habitId);
+        const updated = isAlreadyDone
+          ? defaultCompleted.filter((id) => id !== habitId)
+          : [...defaultCompleted, habitId];
+        setDefaultCompleted(updated);
+        return;
+      }
+
       setHabits((prev) =>
         prev.map((habit) => {
           if (habit.id !== habitId) return habit;
@@ -88,7 +172,7 @@ function HabitApp() {
         })
       );
     },
-    [setHabits]
+    [setHabits, defaultCompleted, setDefaultCompleted]
   );
 
   const handleEditHabit = useCallback((habit: Habit) => {
@@ -122,9 +206,7 @@ function HabitApp() {
     setShowOnboarding(false);
     setIsCalendarConnected(true);
     const storedName = localStorage.getItem("user-name");
-    if (storedName) {
-      setUserName(storedName);
-    }
+    if (storedName) setUserName(storedName);
   };
 
   if (showOnboarding) {
@@ -135,20 +217,19 @@ function HabitApp() {
     <div className="min-h-screen bg-white">
       <div className="w-full bg-white min-h-screen flex flex-col">
         <Header
-  activeTab={activeTab}
-  onTabChange={handleTabChange}
-  onAddHabit={handleAddHabit}
-  onSelectDate={(date: string | null) => setSelectedDate(date)}
-  isCalendarConnected={isCalendarConnected}
-  completedCount={completedCount}
-  totalHabits={totalHabits}
-  userName={userName}
-  selectedDate={selectedDate}
-/>
-
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onAddHabit={handleAddHabit}
+          onSelectDate={(date: string | null) => setSelectedDate(date)}
+          isCalendarConnected={isCalendarConnected}
+          completedCount={completedCount}
+          totalHabits={totalHabits}
+          userName={userName}
+          selectedDate={selectedDate}
+        />
 
         <HabitList
-          habits={habits}
+          habits={allHabits}
           onToggleComplete={toggleHabitComplete}
           onEdit={handleEditHabit}
           onDelete={deleteHabit}
