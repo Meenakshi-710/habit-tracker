@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Habit } from "../types/habit";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import Header from "./Header";
+import Header from "./header";
 import HabitList from "./HabitList";
 import HabitForm from "./HabitForm";
 import OnboardingFlow from "./OnboardingFlow";
@@ -27,6 +27,7 @@ function HabitApp() {
   const wakeTime = wakeTimeISO ? new Date(wakeTimeISO) : null;
   const windTime = windDownTimeISO ? new Date(windDownTimeISO) : null;
 
+  // Create default time habits
   const defaultTimeHabits: Habit[] = [];
 
   if (wakeTime) {
@@ -63,34 +64,54 @@ function HabitApp() {
     habit.completedDates.includes(todayDateString)
   ).length;
 
-  console.log("🧪 allHabits before syncing to chrome.storage:", allHabits);
+  // 🔄 Function to sync habits to extension
+  const syncHabitsToExtension = useCallback((habitsToSync: Habit[]) => {
+    console.log("🔄 syncHabitsToExtension called:");
+    console.log("  - habitsToSync.length:", habitsToSync.length);
+    console.log("  - habitsToSync:", habitsToSync);
 
-  useEffect(() => {
-    const syncHabitsToBackground = () => {
-      if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
-        chrome.runtime.sendMessage(
-          {
-            type: "SAVE_HABITS",
-            payload: allHabits,
-          },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "Failed to sync habits:",
-                chrome.runtime.lastError.message
-              );
-            } else {
-              console.log("✅ Synced habits to background:", response);
-            }
-          }
-        );
-      } else {
-        console.warn("⚠️ chrome.runtime is not available");
-      }
+    const message = {
+      type: "FROM_WEBPAGE_SAVE_HABITS",
+      payload: habitsToSync,
     };
 
-    syncHabitsToBackground();
-  }, [allHabits]);
+    console.log("📤 About to post message to contentScript:");
+    console.log("  - Message type:", message.type);
+    console.log("  - Payload length:", message.payload.length);
+    console.log("  - Full message:", message);
+
+    try {
+      window.postMessage(message, "*");
+      console.log("📤 Message posted successfully");
+    } catch (error) {
+      console.error("❌ Error posting message:", error);
+    }
+  }, []);
+
+  // 🔄 Sync habits to extension whenever allHabits changes
+  useEffect(() => {
+    console.log("🔄 Sync effect triggered:");
+    console.log("  - allHabits.length:", allHabits.length);
+    console.log("  - habits.length:", habits.length);
+    console.log("  - defaultTimeHabits.length:", defaultTimeHabits.length);
+
+    // Add a small delay to ensure state is settled
+    const timeoutId = setTimeout(() => {
+      console.log("⏰ Timeout triggered, calling syncHabitsToExtension");
+      syncHabitsToExtension(allHabits);
+    }, 100);
+    
+    return () => {
+      console.log("🧹 Cleanup: clearing timeout");
+      clearTimeout(timeoutId);
+    };
+  }, [allHabits, syncHabitsToExtension]); // Use allHabits as dependency
+
+  // Also sync when specific localStorage items change
+  useEffect(() => {
+    console.log("🔄 LocalStorage change detected, syncing habits");
+    syncHabitsToExtension(allHabits);
+  }, [wakeTime, windTime, defaultCompleted, syncHabitsToExtension, allHabits]);
 
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem("onboarding-completed");
@@ -105,6 +126,7 @@ function HabitApp() {
   }, []);
 
   const handleTabChange = (tab: string) => setActiveTab(tab);
+
   const generateId = () =>
     Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
@@ -116,22 +138,47 @@ function HabitApp() {
         completedDates: [],
         createdAt: new Date().toISOString(),
       };
-      setHabits((prev) => [...prev, newHabit]);
+      
+      console.log("➕ Adding new habit:", newHabit);
+      setHabits((prev) => {
+        const updated = [...prev, newHabit];
+        console.log("📝 Updated habits state:", updated);
+        
+        // Immediately sync after adding
+        setTimeout(() => {
+          const newAllHabits = [...defaultTimeHabits, ...updated];
+          console.log("🚀 Immediate sync after adding habit:", newAllHabits);
+          syncHabitsToExtension(newAllHabits);
+        }, 50);
+        
+        return updated;
+      });
     },
-    [setHabits]
+    [setHabits, defaultTimeHabits, syncHabitsToExtension]
   );
 
   const updateHabit = useCallback(
     (habitData: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
       if (!editingHabit) return;
-      setHabits((prev) =>
-        prev.map((habit) =>
+      
+      console.log("✏️ Updating habit:", editingHabit.id, habitData);
+      setHabits((prev) => {
+        const updated = prev.map((habit) =>
           habit.id === editingHabit.id ? { ...habit, ...habitData } : habit
-        )
-      );
+        );
+        
+        // Immediately sync after updating
+        setTimeout(() => {
+          const newAllHabits = [...defaultTimeHabits, ...updated];
+          console.log("🚀 Immediate sync after updating habit:", newAllHabits);
+          syncHabitsToExtension(newAllHabits);
+        }, 50);
+        
+        return updated;
+      });
       setEditingHabit(null);
     },
-    [editingHabit, setHabits]
+    [editingHabit, setHabits, defaultTimeHabits, syncHabitsToExtension]
   );
 
   const deleteHabit = useCallback(
@@ -185,6 +232,7 @@ function HabitApp() {
 
   const handleFormSubmit = useCallback(
     (habitData: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
+      console.log("📋 Form submitted with data:", habitData);
       if (editingHabit) {
         updateHabit(habitData);
       } else {
