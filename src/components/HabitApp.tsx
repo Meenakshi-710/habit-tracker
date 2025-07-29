@@ -21,44 +21,37 @@ function HabitApp() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const todayDateString = new Date().toDateString();
-  const wakeTime = localStorage.getItem("wake-time");
-  const windTime = localStorage.getItem("winddown-time");
+  const wakeTimeISO = localStorage.getItem("wake-time");
+  const windDownTimeISO = localStorage.getItem("winddown-time");
 
-  const convertLocalTimeToUTC = (
-    dateString: string,
-    timeString: string
-  ): string => {
-    const localDateTime = new Date(`${dateString}T${timeString}:00`);
-    return localDateTime.toISOString();
-  };
+  const wakeTime = wakeTimeISO ? new Date(wakeTimeISO) : null;
+  const windTime = windDownTimeISO ? new Date(windDownTimeISO) : null;
 
   const defaultTimeHabits: Habit[] = [];
 
   if (wakeTime) {
-    const todayDate = new Date().toISOString().split("T")[0];
+    const todayDate = new Date().toDateString();
     defaultTimeHabits.push({
       id: "wake-time",
       name: "Wake Up",
       category: "Health & Fitness",
       color: "#FFA500",
-      dateTime: convertLocalTimeToUTC(todayDate, wakeTime),
-      completedDates: defaultCompleted.includes("wake-time")
-        ? [todayDateString]
-        : [],
+      dateTime: wakeTime.toISOString(),
+      completedDates: defaultCompleted.includes("wake-time") ? [todayDate] : [],
       createdAt: new Date().toISOString(),
     });
   }
 
   if (windTime) {
-    const todayDate = new Date().toISOString().split("T")[0];
+    const todayDate = new Date().toDateString();
     defaultTimeHabits.push({
       id: "winddown-time",
       name: "Wind Down",
       category: "Mindfulness",
       color: "#9370DB",
-      dateTime: convertLocalTimeToUTC(todayDate, windTime),
+      dateTime: windTime.toISOString(),
       completedDates: defaultCompleted.includes("winddown-time")
-        ? [todayDateString]
+        ? [todayDate]
         : [],
       createdAt: new Date().toISOString(),
     });
@@ -143,9 +136,19 @@ function HabitApp() {
 
   const deleteHabit = useCallback(
     (habitId: string) => {
-      setHabits((prev) => prev.filter((habit) => habit.id !== habitId));
+      if (habitId === "wake-time") {
+        localStorage.removeItem("wake-time");
+        setDefaultCompleted((prev) => prev.filter((id) => id !== "wake-time"));
+      } else if (habitId === "winddown-time") {
+        localStorage.removeItem("winddown-time");
+        setDefaultCompleted((prev) =>
+          prev.filter((id) => id !== "winddown-time")
+        );
+      } else {
+        setHabits((prev) => prev.filter((habit) => habit.id !== habitId));
+      }
     },
-    [setHabits]
+    [setHabits, setDefaultCompleted]
   );
 
   const toggleHabitComplete = useCallback(

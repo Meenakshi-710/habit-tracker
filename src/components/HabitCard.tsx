@@ -62,7 +62,7 @@ export default function HabitCard({
     for (let i = 0; i < sortedDates.length; i++) {
       const date = new Date(sortedDates[i]);
       date.setHours(0, 0, 0, 0); // Reset to start of day
-      
+
       const dayDiff = Math.floor(
         (currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -184,9 +184,9 @@ export default function HabitCard({
           </div>
         </div>
 
-        {/* Action Buttons – hide for default time habits */}
-        {!isDefaultTimeHabit && (
-          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+        {/* Action Buttons */}
+        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+          {!isDefaultTimeHabit && (
             <button
               onClick={() => onEdit(habit)}
               className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-110"
@@ -194,15 +194,15 @@ export default function HabitCard({
             >
               <Edit2 size={16} />
             </button>
-            <button
-              onClick={() => onDelete(habit.id)}
-              className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-110"
-              title="Delete habit"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        )}
+          )}
+          <button
+            onClick={() => onDelete(habit.id)}
+            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-110"
+            title="Delete habit"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

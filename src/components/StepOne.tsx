@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WiSunrise, WiMoonAltWaningCrescent6 } from "react-icons/wi";
 import { HiArrowLeft, HiArrowRight } from "react-icons/hi";
 
@@ -11,15 +11,49 @@ const StepOne = ({ onBack, onContinue }: StepOneProps) => {
   const [wakeTime, setWakeTime] = useState("07:00");
   const [windDownTime, setWindDownTime] = useState("22:00");
 
+  // Load from localStorage if already saved
+  useEffect(() => {
+    const getTimeFromStorage = (key: string) => {
+      const stored = localStorage.getItem(key);
+      if (!stored) return null;
+      const date = new Date(stored);
+      if (isNaN(date.getTime())) return null;
+      return date.toTimeString().slice(0, 5); // HH:mm format
+    };
+
+    const savedWake = getTimeFromStorage("wake-time");
+    const savedWind = getTimeFromStorage("winddown-time");
+
+    if (savedWake) setWakeTime(savedWake);
+    if (savedWind) setWindDownTime(savedWind);
+  }, []);
+
+
   const handleContinue = () => {
-    localStorage.setItem("wake-time", wakeTime);
-    localStorage.setItem("winddown-time", windDownTime);
+    const now = new Date();
+
+    const getAdjustedTime = (timeStr: string): string => {
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      const target = new Date(now);
+      target.setHours(hours, minutes, 0, 0);
+
+      // If time has already passed today, schedule for tomorrow
+      if (target <= now) {
+        target.setDate(target.getDate() + 1);
+      }
+
+      return target.toISOString();
+    };
+
+    const adjustedWake = getAdjustedTime(wakeTime);
+    const adjustedWind = getAdjustedTime(windDownTime);
+
+    localStorage.setItem("wake-time", adjustedWake);
+    localStorage.setItem("winddown-time", adjustedWind);
     onContinue();
   };
 
   const handleSkip = () => {
-    localStorage.removeItem("wake-time");
-    localStorage.removeItem("winddown-time");
     onContinue();
   };
 
