@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Habit } from "../types/habit";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import Header from "./header";
+import Header from "./Header";
 import HabitList from "./HabitList";
 import HabitForm from "./HabitForm";
 import OnboardingFlow from "./OnboardingFlow";
