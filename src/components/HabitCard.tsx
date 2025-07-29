@@ -57,16 +57,14 @@ export default function HabitCard({
 
     let streak = 0;
     const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+    currentDate.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < sortedDates.length; i++) {
       const date = new Date(sortedDates[i]);
-      date.setHours(0, 0, 0, 0); // Reset to start of day
-
+      date.setHours(0, 0, 0, 0);
       const dayDiff = Math.floor(
         (currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
       );
-
       if (dayDiff === streak) {
         streak++;
       } else {
@@ -79,7 +77,6 @@ export default function HabitCard({
 
   const streak = getStreakCount();
 
-  // Format datetime for display
   const formatDateTime = (dateTime: string) => {
     try {
       const date = new Date(dateTime);
@@ -102,7 +99,6 @@ export default function HabitCard({
           : "border-gray-200/80 hover:border-gray-300/80 shadow-sm hover:bg-white"
       }`}
     >
-      {/* Completion status indicator */}
       <div
         className={`absolute top-4 right-4 w-2 h-2 rounded-full transition-all duration-200 ${
           isCompleted ? "bg-emerald-500 shadow-lg" : "bg-gray-300"
@@ -111,9 +107,25 @@ export default function HabitCard({
 
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4 flex-1">
-          {/* Completion Button */}
           <button
-            onClick={() => onToggleComplete(habit.id)}
+            onClick={() => {
+              onToggleComplete(habit.id);
+
+              const alreadyCompleted = habit.completedDates.includes(
+                new Date().toDateString()
+              );
+
+              if (!alreadyCompleted) {
+                chrome.runtime.sendMessage({
+                  type: "HABIT_COMPLETED",
+                  payload: {
+                    id: habit.id,
+                    name: habit.name,
+                    completedAt: new Date().toISOString(),
+                  },
+                });
+              }
+            }}
             className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110 ${
               isCompleted
                 ? "bg-gradient-to-br from-pink-500 via-pink-600 to-pink-700 border-pink-700 text-white shadow-lg"
@@ -132,7 +144,6 @@ export default function HabitCard({
             ></div>
           </button>
 
-          {/* Habit Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-3 mb-2">
               <h3
@@ -165,7 +176,6 @@ export default function HabitCard({
               )}
             </div>
 
-            {/* DateTime display */}
             <div className="text-sm text-gray-500 mb-1">
               {formatDateTime(habit.dateTime)}
             </div>
@@ -184,7 +194,6 @@ export default function HabitCard({
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
           {!isDefaultTimeHabit && (
             <button

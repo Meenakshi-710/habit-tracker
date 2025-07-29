@@ -183,7 +183,6 @@ export default function Header({
                   <Plus size={18} />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-sm">New Habit</p>
                   <p className="text-xs text-gray-300">Build something great</p>
                 </div>
               </div>

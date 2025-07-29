@@ -1,9 +1,7 @@
 import { Target, TrendingUp, Calendar, Sparkles } from 'lucide-react';
 import HabitCard from './HabitCard';
 
-
-
-// Mock Habit type since we don't have the import
+// Habit type definition
 interface Habit {
   id: string;
   name: string;
@@ -13,8 +11,6 @@ interface Habit {
   completedDates: string[];
   createdAt: string;
 }
-
-
 
 interface HabitListProps {
   habits: Habit[];
@@ -26,15 +22,19 @@ interface HabitListProps {
 export default function HabitList({ habits, onToggleComplete, onEdit, onDelete }: HabitListProps) {
   const today = new Date().toDateString();
 
+  // Sort habits: incomplete first, then completed
   const sortedHabits = [...habits].sort((a, b) => {
     const aCompleted = a.completedDates.includes(today);
     const bCompleted = b.completedDates.includes(today);
 
     if (aCompleted && !bCompleted) return 1;
     if (!aCompleted && bCompleted) return -1;
-    return 0;
+    
+    // If both have same completion status, sort by time
+    const aTime = new Date(a.dateTime).getTime();
+    const bTime = new Date(b.dateTime).getTime();
+    return aTime - bTime;
   });
-
 
   if (habits.length === 0) {
     return (
@@ -80,9 +80,8 @@ export default function HabitList({ habits, onToggleComplete, onEdit, onDelete }
 
   return (
     <div className="flex-1 bg-gradient-to-br from-gray-50/50 via-white to-blue-50/20">
-      {/* Stats Header */}
+      {/* Habits List */}
       <div className="max-w-5xl mx-auto px-8 py-6">
-        {/* Habits Grid */}
         <div className="grid gap-6">
           {sortedHabits.map((habit, index) => (
             <div

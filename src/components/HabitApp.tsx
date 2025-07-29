@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Habit } from "../types/habit";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import Header from "./header";
+import Header from "./Header";
 import HabitList from "./HabitList";
 import HabitForm from "./HabitForm";
 import OnboardingFlow from "./OnboardingFlow";
@@ -27,7 +27,6 @@ function HabitApp() {
   const wakeTime = wakeTimeISO ? new Date(wakeTimeISO) : null;
   const windTime = windDownTimeISO ? new Date(windDownTimeISO) : null;
 
-  // Create default time habits
   const defaultTimeHabits: Habit[] = [];
 
   if (wakeTime) {
@@ -60,58 +59,28 @@ function HabitApp() {
 
   const allHabits = [...defaultTimeHabits, ...habits];
   const totalHabits = allHabits.length;
-  const completedCount = allHabits.filter((habit) =>
-    habit.completedDates.includes(todayDateString)
+  const completedCount = allHabits.filter((h) =>
+    h.completedDates.includes(todayDateString)
   ).length;
 
-  // 🔄 Function to sync habits to extension
-  const syncHabitsToExtension = useCallback((habitsToSync: Habit[]) => {
-    console.log("🔄 syncHabitsToExtension called:");
-    console.log("  - habitsToSync.length:", habitsToSync.length);
-    console.log("  - habitsToSync:", habitsToSync);
-
-    const message = {
-      type: "FROM_WEBPAGE_SAVE_HABITS",
-      payload: habitsToSync,
-    };
-
-    console.log("📤 About to post message to contentScript:");
-    console.log("  - Message type:", message.type);
-    console.log("  - Payload length:", message.payload.length);
-    console.log("  - Full message:", message);
-
-    try {
-      window.postMessage(message, "*");
-      console.log("📤 Message posted successfully");
-    } catch (error) {
-      console.error("❌ Error posting message:", error);
+  // ✅ Send habits to background on change
+  useEffect(() => {
+    if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+      chrome.runtime.sendMessage(
+        {
+          type: "SAVE_HABITS",
+          payload: allHabits,
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn("⚠️ Sync error:", chrome.runtime.lastError.message);
+          } else {
+            console.log("✅ Habits synced:", response);
+          }
+        }
+      );
     }
-  }, []);
-
-  // 🔄 Sync habits to extension whenever allHabits changes
-  useEffect(() => {
-    console.log("🔄 Sync effect triggered:");
-    console.log("  - allHabits.length:", allHabits.length);
-    console.log("  - habits.length:", habits.length);
-    console.log("  - defaultTimeHabits.length:", defaultTimeHabits.length);
-
-    // Add a small delay to ensure state is settled
-    const timeoutId = setTimeout(() => {
-      console.log("⏰ Timeout triggered, calling syncHabitsToExtension");
-      syncHabitsToExtension(allHabits);
-    }, 100);
-    
-    return () => {
-      console.log("🧹 Cleanup: clearing timeout");
-      clearTimeout(timeoutId);
-    };
-  }, [allHabits, syncHabitsToExtension]); // Use allHabits as dependency
-
-  // Also sync when specific localStorage items change
-  useEffect(() => {
-    console.log("🔄 LocalStorage change detected, syncing habits");
-    syncHabitsToExtension(allHabits);
-  }, [wakeTime, windTime, defaultCompleted, syncHabitsToExtension, allHabits]);
+  }, [habits, defaultCompleted, wakeTime, windTime]);
 
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem("onboarding-completed");
@@ -126,59 +95,31 @@ function HabitApp() {
   }, []);
 
   const handleTabChange = (tab: string) => setActiveTab(tab);
-
   const generateId = () =>
     Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
   const addHabit = useCallback(
-    (habitData: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
+    (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
       const newHabit: Habit = {
-        ...habitData,
+        ...data,
         id: generateId(),
         completedDates: [],
         createdAt: new Date().toISOString(),
       };
-      
-      console.log("➕ Adding new habit:", newHabit);
-      setHabits((prev) => {
-        const updated = [...prev, newHabit];
-        console.log("📝 Updated habits state:", updated);
-        
-        // Immediately sync after adding
-        setTimeout(() => {
-          const newAllHabits = [...defaultTimeHabits, ...updated];
-          console.log("🚀 Immediate sync after adding habit:", newAllHabits);
-          syncHabitsToExtension(newAllHabits);
-        }, 50);
-        
-        return updated;
-      });
+      setHabits((prev) => [...prev, newHabit]);
     },
-    [setHabits, defaultTimeHabits, syncHabitsToExtension]
+    [setHabits]
   );
 
   const updateHabit = useCallback(
-    (habitData: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
+    (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
       if (!editingHabit) return;
-      
-      console.log("✏️ Updating habit:", editingHabit.id, habitData);
-      setHabits((prev) => {
-        const updated = prev.map((habit) =>
-          habit.id === editingHabit.id ? { ...habit, ...habitData } : habit
-        );
-        
-        // Immediately sync after updating
-        setTimeout(() => {
-          const newAllHabits = [...defaultTimeHabits, ...updated];
-          console.log("🚀 Immediate sync after updating habit:", newAllHabits);
-          syncHabitsToExtension(newAllHabits);
-        }, 50);
-        
-        return updated;
-      });
+      setHabits((prev) =>
+        prev.map((h) => (h.id === editingHabit.id ? { ...h, ...data } : h))
+      );
       setEditingHabit(null);
     },
-    [editingHabit, setHabits, defaultTimeHabits, syncHabitsToExtension]
+    [editingHabit, setHabits]
   );
 
   const deleteHabit = useCallback(
@@ -199,30 +140,30 @@ function HabitApp() {
   );
 
   const toggleHabitComplete = useCallback(
-    (habitId: string) => {
+    (id: string) => {
       const today = new Date().toDateString();
-
-      if (habitId === "wake-time" || habitId === "winddown-time") {
-        const isAlreadyDone = defaultCompleted.includes(habitId);
-        const updated = isAlreadyDone
-          ? defaultCompleted.filter((id) => id !== habitId)
-          : [...defaultCompleted, habitId];
+      if (id === "wake-time" || id === "winddown-time") {
+        const updated = defaultCompleted.includes(id)
+          ? defaultCompleted.filter((i) => i !== id)
+          : [...defaultCompleted, id];
         setDefaultCompleted(updated);
         return;
       }
 
       setHabits((prev) =>
-        prev.map((habit) => {
-          if (habit.id !== habitId) return habit;
-          const isCompleted = habit.completedDates.includes(today);
-          const updatedDates = isCompleted
-            ? habit.completedDates.filter((date) => date !== today)
-            : [...habit.completedDates, today];
-          return { ...habit, completedDates: updatedDates };
+        prev.map((h) => {
+          if (h.id !== id) return h;
+          const isDone = h.completedDates.includes(today);
+          return {
+            ...h,
+            completedDates: isDone
+              ? h.completedDates.filter((d) => d !== today)
+              : [...h.completedDates, today],
+          };
         })
       );
     },
-    [setHabits, defaultCompleted, setDefaultCompleted]
+    [defaultCompleted, setDefaultCompleted, setHabits]
   );
 
   const handleEditHabit = useCallback((habit: Habit) => {
@@ -231,13 +172,8 @@ function HabitApp() {
   }, []);
 
   const handleFormSubmit = useCallback(
-    (habitData: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
-      console.log("📋 Form submitted with data:", habitData);
-      if (editingHabit) {
-        updateHabit(habitData);
-      } else {
-        addHabit(habitData);
-      }
+    (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
+      editingHabit ? updateHabit(data) : addHabit(data);
     },
     [editingHabit, updateHabit, addHabit]
   );
@@ -266,26 +202,24 @@ function HabitApp() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="w-full bg-white min-h-screen flex flex-col">
+      <div className="w-full flex flex-col">
         <Header
           activeTab={activeTab}
           onTabChange={handleTabChange}
           onAddHabit={handleAddHabit}
-          onSelectDate={(date: string | null) => setSelectedDate(date)}
+          onSelectDate={setSelectedDate}
           isCalendarConnected={isCalendarConnected}
           completedCount={completedCount}
           totalHabits={totalHabits}
           userName={userName}
           selectedDate={selectedDate}
         />
-
         <HabitList
           habits={allHabits}
           onToggleComplete={toggleHabitComplete}
           onEdit={handleEditHabit}
           onDelete={deleteHabit}
         />
-
         <HabitForm
           isOpen={isFormOpen}
           onClose={handleCloseForm}
@@ -299,3 +233,6 @@ function HabitApp() {
 }
 
 export default HabitApp;
+
+
+

@@ -6,4 +6,5 @@ export interface Habit {
   dateTime: string; 
   completedDates: string[];
   createdAt: string;
+  remindBeforeMinutes?: number;
 }
