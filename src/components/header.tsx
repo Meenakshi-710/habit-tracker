@@ -7,6 +7,8 @@ interface HeaderProps {
   onAddHabit: () => void;
   onSelectDate: (date: string | null) => void;
   isCalendarConnected?: boolean;
+  onCalendarConnect?: () => void; // NEW
+  onCalendarDisconnect: () => void;
   completedCount: number;
   totalHabits: number;
   userName?: string | null;
@@ -17,6 +19,8 @@ export default function Header({
   onAddHabit,
   onSelectDate,
   isCalendarConnected = false,
+  onCalendarConnect,
+  onCalendarDisconnect, 
   completedCount,
   totalHabits,
   userName,
@@ -139,39 +143,41 @@ export default function Header({
 
           <div className="flex items-center space-x-4">
             <div
-              className={`group relative overflow-hidden px-4 py-3 rounded-2xl border-2 transition-all duration-300 ${
-                isCalendarConnected
-                  ? "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
-                  : "border-gray-200 bg-gray-50/50 hover:bg-gray-50"
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div
-                  className={`p-1.5 rounded-xl ${
-                    isCalendarConnected ? "bg-emerald-100" : "bg-gray-100"
-                  }`}
-                >
-                  <Calendar
-                    size={16}
-                    className={
-                      isCalendarConnected ? "text-emerald-600" : "text-gray-400"
-                    }
-                  />
-                </div>
-                <div>
-                  <p
-                    className={`text-sm font-medium ${
-                      isCalendarConnected ? "text-emerald-700" : "text-gray-600"
-                    }`}
-                  >
-                    {isCalendarConnected ? "Calendar Synced" : "Sync Calendar"}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {isCalendarConnected ? "All up to date" : "Connect to sync"}
-                  </p>
-                </div>
-              </div>
-            </div>
+  className={`group relative overflow-hidden px-4 py-3 rounded-2xl border-2 transition-all duration-300 cursor-pointer ${
+    isCalendarConnected
+      ? "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
+      : "border-gray-200 bg-gray-50/50 hover:bg-gray-50"
+  }`}
+  onClick={isCalendarConnected ? onCalendarDisconnect : onCalendarConnect}
+>
+  <div className="flex items-center space-x-3">
+    <div
+      className={`p-1.5 rounded-xl ${
+        isCalendarConnected ? "bg-emerald-100" : "bg-gray-100"
+      }`}
+    >
+      <Calendar
+        size={16}
+        className={
+          isCalendarConnected ? "text-emerald-600" : "text-gray-400"
+        }
+      />
+    </div>
+    <div>
+      <p
+        className={`text-sm font-medium ${
+          isCalendarConnected ? "text-emerald-700" : "text-gray-600"
+        } underline`}
+      >
+        {isCalendarConnected ? "Calendar Synced" : "Sync Calendar"}
+      </p>
+      <p className="text-xs text-gray-400">
+        {isCalendarConnected ? "Click to disconnect" : "Connect to sync"}
+      </p>
+    </div>
+  </div>
+</div>
+
 
             <button
               onClick={onAddHabit}
@@ -197,10 +203,10 @@ export default function Header({
               <div key={monthKey} className="flex items-start space-x-1">
                 {/* Month Label - Rotated and positioned at start of month */}
                 <div className="flex flex-col items-center justify-center h-24 mr-2">
-                  <div 
+                  <div
                     className="text-sm font-bold text-gray-700 whitespace-nowrap transform -rotate-90 origin-center"
-                    style={{ 
-                      transformOrigin: 'center center',
+                    style={{
+                      transformOrigin: "center center",
                     }}
                   >
                     {monthDays[0].month.toUpperCase()}
@@ -217,7 +223,9 @@ export default function Header({
                       <button
                         type="button"
                         key={index}
-                        onClick={() => onSelectDate(isSelected ? null : isoDate)}
+                        onClick={() =>
+                          onSelectDate(isSelected ? null : isoDate)
+                        }
                         className="flex flex-col items-center space-y-1 p-2 rounded-2xl min-w-[64px]"
                       >
                         <span

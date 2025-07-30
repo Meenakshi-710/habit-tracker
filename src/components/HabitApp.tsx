@@ -5,6 +5,7 @@ import Header from "./header";
 import HabitList from "./HabitList";
 import HabitForm from "./HabitForm";
 import OnboardingFlow from "./OnboardingFlow";
+import { getAuthToken, getCalendarEvents } from "../lib/googleAuth";
 
 function HabitApp() {
   const [habits, setHabits] = useLocalStorage<Habit[]>("habits", []);
@@ -28,6 +29,79 @@ function HabitApp() {
   const windTime = windDownTimeISO ? new Date(windDownTimeISO) : null;
 
   const defaultTimeHabits: Habit[] = [];
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<Habit[]>([]);
+
+  useEffect(() => {
+    const fetchGoogleEvents = async () => {
+      if (!accessToken) return;
+      try {
+        const events = await getCalendarEvents(accessToken);
+
+        // 🟨 Add these logs here
+        console.log("All events:", events);
+        console.log(
+          "Filtered events (missing 'start'):",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          events.filter((e: any) => !e.start)
+        );
+
+        const parsedEvents = events
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((event: any) => event.start)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((event: any) => {
+            const dateTime = event.start.dateTime || event.start.date;
+            return {
+              id: `gcal-${event.id}`,
+              name: event.summary || "Untitled Event",
+              category: "Calendar",
+              color: "#3b82f6",
+              dateTime: new Date(dateTime).toISOString(),
+              completedDates: [],
+              createdAt: new Date().toISOString(),
+              type: "event",
+            };
+          });
+
+        setCalendarEvents(parsedEvents);
+      } catch (err) {
+        console.error("Failed to sync Google events:", err);
+      }
+    };
+
+    fetchGoogleEvents();
+  }, [accessToken]);
+
+  useEffect(() => {
+  const savedToken = localStorage.getItem("google_access_token");
+  if (savedToken) {
+    setAccessToken(savedToken);
+    setIsCalendarConnected(true);
+  }
+}, []);
+
+
+  const handleCalendarConnect = async () => {
+  try {
+    const token = await getAuthToken();
+    console.log("🔐 Token received:", token);
+    setAccessToken(token);
+    setIsCalendarConnected(true);
+    localStorage.setItem("google_access_token", token);
+  } catch (err) {
+    console.error("❌ Calendar connection failed:", err);
+  }
+};
+
+
+  const handleCalendarDisconnect = () => {
+  setIsCalendarConnected(false);
+  setAccessToken(null);
+  localStorage.removeItem("google_access_token");
+  setCalendarEvents([]); // 🧹 Clear calendar events on disconnect
+};
+
 
   if (wakeTime) {
     const todayDate = new Date().toDateString();
@@ -57,11 +131,21 @@ function HabitApp() {
     });
   }
 
-  const allHabits = [...defaultTimeHabits, ...habits];
-  const totalHabits = allHabits.length;
-  const completedCount = allHabits.filter((h) =>
-    h.completedDates.includes(todayDateString)
-  ).length;
+  const allHabits = [...defaultTimeHabits, ...habits, ...calendarEvents];
+  const selectedDateString = selectedDate
+  ? new Date(selectedDate).toDateString()
+  : todayDateString;
+
+const habitsForSelectedDate = allHabits.filter((habit) => {
+  const habitDate = new Date(habit.dateTime).toDateString();
+  return habitDate === selectedDateString;
+});
+
+  const totalHabits = habitsForSelectedDate.length;
+const completedCount = habitsForSelectedDate.filter((h) =>
+  h.completedDates.includes(selectedDateString)
+).length;
+
 
   // ✅ Send habits to background on change
   useEffect(() => {
@@ -209,13 +293,15 @@ function HabitApp() {
           onAddHabit={handleAddHabit}
           onSelectDate={setSelectedDate}
           isCalendarConnected={isCalendarConnected}
+          onCalendarConnect={handleCalendarConnect}
+          onCalendarDisconnect={handleCalendarDisconnect}
           completedCount={completedCount}
           totalHabits={totalHabits}
           userName={userName}
           selectedDate={selectedDate}
         />
         <HabitList
-          habits={allHabits}
+          habits={habitsForSelectedDate}
           onToggleComplete={toggleHabitComplete}
           onEdit={handleEditHabit}
           onDelete={deleteHabit}

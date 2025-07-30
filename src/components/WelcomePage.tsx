@@ -8,40 +8,30 @@ const WelcomePage = ({ onGetStarted }: WelcomePageProps) => {
   const [name, setName] = useState("");
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-10 py-16 bg-gradient-to-br from-white to-gray-100 dark:from-black dark:to-gray-900 text-center">
-      <div className="flex flex-col items-center gap-6">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-12 bg-gradient-to-br from-white to-gray-100 dark:from-black dark:to-gray-900 text-center">
+      <div className="flex flex-col items-center gap-6 w-full max-w-2xl">
         <img
           src="/logo.png"
           alt="App Logo"
-          width={120}
-          height={120}
-          className="rounded-[24px] shadow-lg"
+          className="rounded-[24px] shadow-lg w-24 sm:w-28 md:w-32"
         />
 
-        <h1 className="text-[48px] font-extrabold tracking-tight text-gray-900 dark:text-white">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
           Welcome to <span className="text-pink-600">Habit Tracker</span>
         </h1>
 
-        <p className="text-[24px] max-w-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+        <p className="text-base sm:text-lg lg:text-xl max-w-xl text-gray-600 dark:text-gray-300 leading-relaxed px-2">
           All your{" "}
-          <span className="font-semibold text-black dark:text-white">
-            tasks
-          </span>
-          ,
-          <span className="font-semibold text-black dark:text-white">
-            {" "}
-            meetings
-          </span>{" "}
-          and
-          <span className="font-semibold text-black dark:text-white">
-            {" "}
-            habits
-          </span>{" "}
+          <span className="font-semibold text-black dark:text-white">tasks</span>
+          ,{" "}
+          <span className="font-semibold text-black dark:text-white">meetings</span>{" "}
+          and{" "}
+          <span className="font-semibold text-black dark:text-white">habits</span>{" "}
           in one timeline.
         </p>
 
         {/* Name input */}
-        <div className="mt-4 w-full max-w-sm">
+        <div className="mt-4 w-full max-w-sm px-4 sm:px-0">
           <input
             type="text"
             placeholder="What's your name?"
@@ -56,7 +46,7 @@ const WelcomePage = ({ onGetStarted }: WelcomePageProps) => {
             localStorage.setItem("user-name", name);
             onGetStarted(name);
           }}
-          className="mt-8 bg-black dark:bg-white text-white dark:text-black text-xl font-medium py-4 px-10 rounded-full shadow-md hover:scale-105 transition-transform hover:bg-pink-600"
+          className="mt-8 bg-black dark:bg-white text-white dark:text-black text-lg sm:text-xl font-medium py-3 sm:py-4 px-8 sm:px-10 rounded-full shadow-md hover:scale-105 transition-transform hover:bg-pink-600"
         >
           Get Started
         </button>
