@@ -197,7 +197,7 @@ export default function Header({
         </div>
 
         {/* Scrollable Year Calendar */}
-        <div className="overflow-x-auto mb-8 pb-2 no-scrollbar">
+        <div className="overflow-x-auto mb-8 pb-2 scrollbar-hidden">
           <div className="flex items-start space-x-1 min-w-max px-1">
             {Object.entries(groupedDays).map(([monthKey, monthDays]) => (
               <div key={monthKey} className="flex items-start space-x-1">
