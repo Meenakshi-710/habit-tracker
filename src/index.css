@@ -13,10 +13,10 @@ html, body, #root {
 }
 
 /* Optional: hide scrollbars for cleaner look */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, and Opera */
 }
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
+.scrollbar-hidden {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
 }

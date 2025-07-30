@@ -260,7 +260,7 @@ export default function Header({
                   Today's Progress
                 </h2>
                 <p className="text-gray-600">
-                  Keep building your perfect day, one habit at a time
+                  The secret of getting ahead is getting started.
                 </p>
               </div>
               <div className="flex items-center space-x-8">

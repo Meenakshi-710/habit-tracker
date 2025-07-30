@@ -14,7 +14,7 @@ function HabitApp() {
   );
   const [activeTab, setActiveTab] = useState("habits");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [editingItem, setEditingHabit] = useState<Habit | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
@@ -113,13 +113,13 @@ function HabitApp() {
 
   const updateHabit = useCallback(
     (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
-      if (!editingHabit) return;
+      if (!editingItem) return;
       setHabits((prev) =>
-        prev.map((h) => (h.id === editingHabit.id ? { ...h, ...data } : h))
+        prev.map((h) => (h.id === editingItem.id ? { ...h, ...data } : h))
       );
       setEditingHabit(null);
     },
-    [editingHabit, setHabits]
+    [editingItem, setHabits]
   );
 
   const deleteHabit = useCallback(
@@ -173,9 +173,9 @@ function HabitApp() {
 
   const handleFormSubmit = useCallback(
     (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
-      editingHabit ? updateHabit(data) : addHabit(data);
+      editingItem ? updateHabit(data) : addHabit(data);
     },
-    [editingHabit, updateHabit, addHabit]
+    [editingItem, updateHabit, addHabit]
   );
 
   const handleCloseForm = useCallback(() => {
@@ -225,7 +225,7 @@ function HabitApp() {
           onClose={handleCloseForm}
           onSubmit={handleFormSubmit}
           initialDate={selectedDate}
-          editingHabit={editingHabit}
+          editingItem={editingItem}
         />
       </div>
     </div>
@@ -233,6 +233,3 @@ function HabitApp() {
 }
 
 export default HabitApp;
-
-
-
