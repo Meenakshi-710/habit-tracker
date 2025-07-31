@@ -1,14 +1,19 @@
 import { Target, TrendingUp, Calendar, Sparkles } from "lucide-react";
 import HabitCard from "./HabitCard";
 
+// Updated Habit interface
 interface Habit {
   id: string;
   name: string;
+  title?: string;
+  description?: string;
   category: string;
   color: string;
   dateTime: string;
   completedDates: string[];
   createdAt: string;
+  type?: "habit" | "task" | "event";
+  remindBeforeMinutes?: number;
 }
 
 interface HabitListProps {
@@ -16,6 +21,7 @@ interface HabitListProps {
   onToggleComplete: (habitId: string) => void;
   onEdit: (habit: Habit) => void;
   onDelete: (habitId: string) => void;
+  selectedDate?: string | null; // ADDED: selectedDate prop
 }
 
 export default function HabitList({
@@ -23,16 +29,33 @@ export default function HabitList({
   onToggleComplete,
   onEdit,
   onDelete,
+  selectedDate, // ADDED: receive selectedDate
 }: HabitListProps) {
-  const today = new Date().toDateString();
+  // FIXED: Use selectedDate or default to today
+  const targetDateString = selectedDate 
+    ? new Date(selectedDate).toDateString() 
+    : new Date().toDateString();
 
   const sortedHabits = [...habits].sort((a, b) => {
-    const aCompleted = a.completedDates.includes(today);
-    const bCompleted = b.completedDates.includes(today);
+    // FIXED: Check completion status based on the selected date
+    const isDefaultTimeHabitA = a.id === "wake-time" || a.id === "winddown-time";
+    const isDefaultTimeHabitB = b.id === "wake-time" || b.id === "winddown-time";
+    
+    const aCompleted = isDefaultTimeHabitA 
+      ? (targetDateString === new Date().toDateString() && 
+         JSON.parse(localStorage.getItem("default-completed") || "[]").includes(a.id))
+      : a.completedDates.includes(targetDateString);
+      
+    const bCompleted = isDefaultTimeHabitB 
+      ? (targetDateString === new Date().toDateString() && 
+         JSON.parse(localStorage.getItem("default-completed") || "[]").includes(b.id))
+      : b.completedDates.includes(targetDateString);
 
+    // Sort completed items to the bottom
     if (aCompleted && !bCompleted) return 1;
     if (!aCompleted && bCompleted) return -1;
 
+    // Sort by time
     const aTime = new Date(a.dateTime).getTime();
     const bTime = new Date(b.dateTime).getTime();
     return aTime - bTime;
@@ -92,6 +115,7 @@ export default function HabitList({
             >
               <HabitCard
                 habit={habit}
+                selectedDate={selectedDate} // ADDED: Pass selectedDate to HabitCard
                 onToggleComplete={onToggleComplete}
                 onEdit={onEdit}
                 onDelete={onDelete}
