@@ -38,16 +38,19 @@ export default function HabitCard({
   selectedDate, // ADDED: receive selectedDate
 }: HabitCardProps) {
   // FIXED: Use selectedDate or default to today
-  const targetDateString = selectedDate 
-    ? new Date(selectedDate).toDateString() 
+  const targetDateString = selectedDate
+    ? new Date(selectedDate).toDateString()
     : new Date().toDateString();
-  
-  const isDefaultTimeHabit = habit.id === "wake-time" || habit.id === "winddown-time";
-  
+
+  const isDefaultTimeHabit =
+    habit.id === "wake-time" || habit.id === "winddown-time";
+
   // FIXED: For default time habits, check localStorage; for others, check completedDates
-  const isCompleted = isDefaultTimeHabit 
-    ? (targetDateString === new Date().toDateString() && 
-       JSON.parse(localStorage.getItem("default-completed") || "[]").includes(habit.id))
+  const isCompleted = isDefaultTimeHabit
+    ? targetDateString === new Date().toDateString() &&
+      JSON.parse(localStorage.getItem("default-completed") || "[]").includes(
+        habit.id
+      )
     : habit.completedDates.includes(targetDateString);
 
   const isGoogleCalendarEvent = habit.id?.startsWith("gcal-");
@@ -66,27 +69,31 @@ export default function HabitCard({
   };
 
   const getStreakCount = () => {
-    // Don't show streaks for events or default time habits
-    if (isEvent || isGoogleCalendarEvent || isDefaultTimeHabit) return 0;
-    
-    const sortedDates = habit.completedDates
+    // Only show streaks for habits (not events, tasks, or default time habits)
+    if (isEvent || isDefaultTimeHabit || habit.type === "task") return 0;
+
+    // If not completed today, return 0 (no streak shown)
+    if (!isCompleted) return 0;
+
+    // Sort dates in descending order (newest first)
+    const sortedDates = [...habit.completedDates]
       .map((dateStr) => new Date(dateStr))
       .sort((a, b) => b.getTime() - a.getTime());
 
-    let streak = 0;
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
+    let streak = 1; // Start with 1 since we're completed today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < sortedDates.length; i++) {
-      const date = new Date(sortedDates[i]);
-      date.setHours(0, 0, 0, 0);
-      const dayDiff = Math.floor(
-        (currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (dayDiff === streak) {
+    // Check previous days for consecutive completion
+    const currentDate = new Date(today);
+    for (let i = 1; i <= sortedDates.length; i++) {
+      currentDate.setDate(currentDate.getDate() - 1);
+      const prevDateStr = currentDate.toDateString();
+
+      if (habit.completedDates.includes(prevDateStr)) {
         streak++;
       } else {
-        break;
+        break; // Streak ends when we find a gap
       }
     }
 
@@ -197,11 +204,13 @@ export default function HabitCard({
             onClick={() => {
               onToggleComplete(habit.id);
               // FIXED: Use proper completion check based on habit type and selected date
-              const alreadyCompleted = isDefaultTimeHabit 
-                ? (targetDateString === new Date().toDateString() && 
-                   JSON.parse(localStorage.getItem("default-completed") || "[]").includes(habit.id))
+              const alreadyCompleted = isDefaultTimeHabit
+                ? targetDateString === new Date().toDateString() &&
+                  JSON.parse(
+                    localStorage.getItem("default-completed") || "[]"
+                  ).includes(habit.id)
                 : habit.completedDates.includes(targetDateString);
-                
+
               if (
                 !alreadyCompleted &&
                 typeof chrome !== "undefined" &&
@@ -273,7 +282,7 @@ export default function HabitCard({
               <span className="text-gray-500 font-medium">
                 {habit.category}
               </span>
-              {streak > 0 && (
+              {isCompleted && habit.type === "habit" && streak > 0 && (
                 <div className="flex items-center space-x-1 text-orange-600">
                   <TrendingUp size={14} />
                   <span className="font-semibold">{streak} day streak</span>

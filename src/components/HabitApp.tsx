@@ -5,9 +5,9 @@ import Header from "./header";
 import HabitList from "./HabitList";
 import HabitForm from "./HabitForm";
 import OnboardingFlow from "./OnboardingFlow";
-import { 
-  getAuthToken, 
-  getCalendarEvents, 
+import {
+  getAuthToken,
+  getCalendarEvents,
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,
@@ -38,7 +38,7 @@ function HabitApp() {
 
   const defaultTimeHabits: Habit[] = [];
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  
+
   // FIXED: Replace useLocalStorage with regular useState for calendarEvents
   const [calendarEvents, setCalendarEvents] = useState<Habit[]>([]);
 
@@ -55,7 +55,7 @@ function HabitApp() {
         console.error("Failed to load calendar events:", error);
       }
     };
-    
+
     loadCalendarEvents();
   }, []);
 
@@ -242,6 +242,7 @@ function HabitApp() {
           id: generateId(),
           completedDates: [],
           createdAt: new Date().toISOString(),
+          type: data.type || "habit", // Ensure type is set, default to "habit"
         };
 
         // Always sync to Google Calendar if connected and it's not a default time habit
@@ -251,20 +252,27 @@ function HabitApp() {
               name: data.name,
               description: data.description || "",
               dateTime: data.dateTime,
-              remindBeforeMinutes: data.remindBeforeMinutes || 0
+              remindBeforeMinutes: data.remindBeforeMinutes || 0,
             });
-            
-            // Update the habit with Google Calendar event ID and add to calendar events
+
             newHabit.id = `gcal-${calendarEvent.id}`;
-            newHabit.type = "event";
-            
-            setCalendarEvents(prev => [...prev, newHabit]);
-            console.log("✅ Event created in Google Calendar:", calendarEvent.id);
+            newHabit.type = data.type || "event"; // Ensure type is set
+
+            setCalendarEvents((prev) => [...prev, newHabit]);
+            console.log(
+              "✅ Event created in Google Calendar:",
+              calendarEvent.id
+            );
           } catch (calendarError) {
-            console.error("❌ Failed to create in Google Calendar:", calendarError);
+            console.error(
+              "❌ Failed to create in Google Calendar:",
+              calendarError
+            );
             // Still add as local habit if calendar sync fails
             setHabits((prev) => [...prev, newHabit]);
-            alert("Habit created locally but failed to sync with Google Calendar. You can try again later.");
+            alert(
+              "Habit created locally but failed to sync with Google Calendar. You can try again later."
+            );
           }
         } else {
           // Add as regular habit if calendar not connected or it's a default time habit
@@ -284,7 +292,7 @@ function HabitApp() {
   const updateHabit = useCallback(
     async (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
       if (!editingItem) return;
-      
+
       setIsLoading(true);
       try {
         // If it's a Google Calendar event, update in Google Calendar
@@ -293,15 +301,13 @@ function HabitApp() {
             name: data.name,
             description: data.description || "",
             dateTime: data.dateTime,
-            remindBeforeMinutes: data.remindBeforeMinutes || 0
+            remindBeforeMinutes: data.remindBeforeMinutes || 0,
           });
-          
+
           // Update calendar events
-          setCalendarEvents(prev =>
-            prev.map(event => 
-              event.id === editingItem.id 
-                ? { ...event, ...data }
-                : event
+          setCalendarEvents((prev) =>
+            prev.map((event) =>
+              event.id === editingItem.id ? { ...event, ...data } : event
             )
           );
           console.log("✅ Event updated in Google Calendar");
@@ -311,7 +317,7 @@ function HabitApp() {
             prev.map((h) => (h.id === editingItem.id ? { ...h, ...data } : h))
           );
         }
-        
+
         setEditingHabit(null);
       } catch (error) {
         console.error("❌ Failed to update habit:", error);
@@ -330,7 +336,9 @@ function HabitApp() {
       try {
         if (habitId === "wake-time") {
           localStorage.removeItem("wake-time");
-          setDefaultCompleted((prev) => prev.filter((id) => id !== "wake-time"));
+          setDefaultCompleted((prev) =>
+            prev.filter((id) => id !== "wake-time")
+          );
         } else if (habitId === "winddown-time") {
           localStorage.removeItem("winddown-time");
           setDefaultCompleted((prev) =>
@@ -339,9 +347,11 @@ function HabitApp() {
         } else if (isGoogleCalendarEvent(habitId) && accessToken) {
           // Delete from Google Calendar
           await deleteCalendarEvent(accessToken, habitId);
-          
+
           // Remove from calendar events
-          setCalendarEvents(prev => prev.filter(event => event.id !== habitId));
+          setCalendarEvents((prev) =>
+            prev.filter((event) => event.id !== habitId)
+          );
           console.log("✅ Event deleted from Google Calendar");
         } else {
           // Delete regular habit
@@ -361,11 +371,11 @@ function HabitApp() {
   const toggleHabitComplete = useCallback(
     (id: string) => {
       console.log("🔄 Toggle called for:", id);
-      
-      const targetDateString = selectedDate 
-        ? new Date(selectedDate).toDateString() 
+
+      const targetDateString = selectedDate
+        ? new Date(selectedDate).toDateString()
         : new Date().toDateString();
-      
+
       console.log("📅 Target date:", targetDateString);
 
       if (id === "wake-time" || id === "winddown-time") {
@@ -382,73 +392,79 @@ function HabitApp() {
 
       // Handle Google Calendar events with Chrome extension compatibility
       if (isGoogleCalendarEvent(id)) {
-        console.log("📊 Before update - Calendar events count:", calendarEvents.length);
-        
-        setCalendarEvents(prevEvents => {
-          console.log("📊 Previous events:", prevEvents.length);
-          
-          const targetEvent = prevEvents.find(e => e.id === id);
-          console.log("🎯 Target event found:", !!targetEvent);
-          console.log("📋 Current completed dates:", targetEvent?.completedDates || []);
-          
-          const updatedEvents = prevEvents.map(event => {
+        setCalendarEvents((prevEvents) => {
+          const updatedEvents = prevEvents.map((event) => {
             if (event.id !== id) return event;
-            
+
             const currentCompleted = [...event.completedDates];
             const isDone = currentCompleted.includes(targetDateString);
-            console.log("✅ Was completed:", isDone);
-            
-            let newCompletedDates;
-            if (isDone) {
-              newCompletedDates = currentCompleted.filter(d => d !== targetDateString);
-            } else {
-              newCompletedDates = [...currentCompleted, targetDateString];
-            }
-            
-            console.log("📋 New completed dates:", newCompletedDates);
-            
+
+            const newCompletedDates = isDone
+              ? currentCompleted.filter((d) => d !== targetDateString)
+              : [...currentCompleted, targetDateString];
+
             return {
               ...event,
-              completedDates: newCompletedDates
+              completedDates: newCompletedDates,
             };
           });
-          
-          console.log("📊 Updated events count:", updatedEvents.length);
-          
+
           // Immediate storage save for Chrome extension
           setTimeout(() => {
             try {
-              localStorage.setItem("calendar-events", JSON.stringify(updatedEvents));
+              localStorage.setItem(
+                "calendar-events",
+                JSON.stringify(updatedEvents)
+              );
               console.log("💾 Calendar events saved to localStorage");
             } catch (error) {
               console.error("❌ Failed to save calendar events:", error);
             }
           }, 0);
-          
+
           return updatedEvents;
         });
         return;
       }
 
-      // Handle regular habits
-      setHabits((prev) =>
-        prev.map((h) => {
+      // Handle regular habits - this is the key fix
+      setHabits((prev) => {
+        const updatedHabits = prev.map((h) => {
           if (h.id !== id) return h;
+
           const isDone = h.completedDates.includes(targetDateString);
+          const newCompletedDates = isDone
+            ? h.completedDates.filter((d) => d !== targetDateString)
+            : [...h.completedDates, targetDateString];
+
           return {
             ...h,
-            completedDates: isDone
-              ? h.completedDates.filter((d) => d !== targetDateString)
-              : [...h.completedDates, targetDateString],
+            completedDates: newCompletedDates,
           };
-        })
-      );
+        });
+
+        // Immediate storage update
+        setTimeout(() => {
+          try {
+            localStorage.setItem("habits", JSON.stringify(updatedHabits));
+          } catch (error) {
+            console.error("Failed to save habits:", error);
+          }
+        }, 0);
+
+        return updatedHabits;
+      });
     },
-    [defaultCompleted, setDefaultCompleted, setHabits, setCalendarEvents, selectedDate, calendarEvents]
+    [defaultCompleted, setDefaultCompleted, selectedDate]
   );
 
   const handleEditHabit = useCallback((habit: Habit) => {
-    setEditingHabit(habit);
+    // Ensure the habit has a type property
+    const habitWithType = {
+      ...habit,
+      type: habit.type || (habit.id?.startsWith("gcal-") ? "event" : "habit"),
+    };
+    setEditingHabit(habitWithType);
     setIsFormOpen(true);
   }, []);
 
@@ -488,12 +504,14 @@ function HabitApp() {
           <div className="bg-white rounded-lg p-6 shadow-xl">
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-600"></div>
-              <span className="text-gray-600">Syncing with Google Calendar...</span>
+              <span className="text-gray-600">
+                Syncing with Google Calendar...
+              </span>
             </div>
           </div>
         </div>
       )}
-      
+
       <div className="w-full flex flex-col">
         <Header
           activeTab={activeTab}
@@ -521,6 +539,7 @@ function HabitApp() {
           onSubmit={handleFormSubmit}
           initialDate={selectedDate}
           editingItem={editingItem}
+          defaultTab={editingItem?.type || "habit"} // Add this line
         />
       </div>
     </div>

@@ -23,6 +23,7 @@ interface FormProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editingItem?: any | null;
   initialDate?: string | null;
+  defaultTab?: string; 
 }
 
 const categories = [
@@ -60,8 +61,9 @@ export default function EnhancedForm({
   onSubmit,
   editingItem,
   initialDate,
+  defaultTab = "habit", // Add this with default value
 }: FormProps) {
-  const [activeTab, setActiveTab] = useState("habit");
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(categories[0].name);

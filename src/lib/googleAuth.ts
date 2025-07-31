@@ -147,6 +147,7 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
   description?: string;
   dateTime: string;
   remindBeforeMinutes?: number;
+  isHabit?: boolean;
 }) => {
   const startDateTime = new Date(eventData.dateTime);
   const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // Default 1 hour duration
