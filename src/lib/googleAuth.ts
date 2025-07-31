@@ -8,7 +8,7 @@ const isChromeExtension = typeof chrome !== "undefined" && chrome.identity;
 
 const REDIRECT_URI = isChromeExtension
   ? chrome.identity.getRedirectURL("oauth2")
-  : "http://localhost:5173";
+  : window.location.origin;
 
 console.log("OAuth Redirect URI:", REDIRECT_URI);
 

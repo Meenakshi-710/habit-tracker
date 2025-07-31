@@ -17,7 +17,7 @@ const WelcomePage = ({ onGetStarted }: WelcomePageProps) => {
         />
 
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-          Welcome to <span className="text-pink-600">Habit Tracker</span>
+          Welcome to <span className="text-pink-600">Time Planner</span>
         </h1>
 
         <p className="text-base sm:text-lg lg:text-xl max-w-xl text-gray-600 dark:text-gray-300 leading-relaxed px-2">
