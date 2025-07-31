@@ -6,7 +6,7 @@ const isChromeExtension = typeof chrome !== "undefined" && chrome.identity;
 // Chrome extensions must use this format as redirect URI
 const REDIRECT_URI = isChromeExtension
   ? chrome.identity.getRedirectURL("oauth2")
-  :"http://localhost:5173";
+  : "http://localhost:5173"; // fallback for dev
 
 console.log("OAuth Redirect URI:", REDIRECT_URI);
 
@@ -106,11 +106,8 @@ export const getAuthTokenFromWeb = (): Promise<string> => {
  * Generic entry point — uses extension or web depending on context.
  */
 export const getAuthToken = (): Promise<string> => {
-  if (isChromeExtension) return getAuthTokenFromExtension();
-  alert("Google login only works in Chrome extension for now."); // or redirect to extension
-  return Promise.reject("Google login is only supported in the extension.");
+  return isChromeExtension ? getAuthTokenFromExtension() : getAuthTokenFromWeb();
 };
-
 
 /**
  * Fetches upcoming events from the user's primary Google Calendar using access token.

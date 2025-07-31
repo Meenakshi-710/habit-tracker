@@ -93,7 +93,7 @@ export default function HabitCard({
 
   return (
     <div
-      className={`group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
+      className={`group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
         isCompleted
           ? "border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/30 shadow-sm"
           : "border-gray-200/80 hover:border-gray-300/80 shadow-sm hover:bg-white"
@@ -105,16 +105,16 @@ export default function HabitCard({
         }`}
       ></div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4 flex-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Left: Check + Info */}
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 flex-1">
+          {/* Toggle Button */}
           <button
             onClick={() => {
               onToggleComplete(habit.id);
-
               const alreadyCompleted = habit.completedDates.includes(
                 new Date().toDateString()
               );
-
               if (!alreadyCompleted) {
                 chrome.runtime.sendMessage({
                   type: "HABIT_COMPLETED",
@@ -126,7 +126,7 @@ export default function HabitCard({
                 });
               }
             }}
-            className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110 ${
+            className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110 shrink-0 ${
               isCompleted
                 ? "bg-gradient-to-br from-pink-500 via-pink-600 to-pink-700 border-pink-700 text-white shadow-lg"
                 : "border-gray-300 hover:border-pink-400 hover:bg-pink-50 text-gray-400 hover:text-pink-600"
@@ -137,17 +137,13 @@ export default function HabitCard({
             ) : (
               <Circle size={20} />
             )}
-            <div
-              className={`absolute inset-0 rounded-full transition-all duration-300 ${
-                isCompleted ? "bg-emerald-400/20 scale-150 opacity-0" : ""
-              }`}
-            ></div>
           </button>
 
+          {/* Habit Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-3 mb-2">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
               <h3
-                className={`text-lg font-semibold transition-all duration-200 ${
+                className={`text-base sm:text-lg font-semibold transition-all duration-200 ${
                   isCompleted
                     ? "text-pink-600 line-through opacity-75"
                     : "text-pink-800 group-hover:text-pink-800"
@@ -158,29 +154,29 @@ export default function HabitCard({
 
               {isDefaultTimeHabit ? (
                 habit.id === "wake-time" ? (
-                  <AlarmClock size={18} className="text-orange-500" />
+                  <AlarmClock size={16} className="text-orange-500" />
                 ) : (
-                  <Moon size={18} className="text-indigo-500" />
+                  <Moon size={16} className="text-indigo-500" />
                 )
               ) : (
-                <span className="text-xl" title={habit.category}>
+                <span className="text-lg" title={habit.category}>
                   {categoryIcons[habit.category] || "⭐"}
                 </span>
               )}
 
               {isCompleted && (
                 <Sparkles
-                  size={16}
+                  size={14}
                   className="text-emerald-500 animate-pulse"
                 />
               )}
             </div>
 
-            <div className="text-sm text-gray-500 mb-1">
+            <div className="text-xs sm:text-sm text-gray-500 mb-1">
               {formatDateTime(habit.dateTime)}
             </div>
 
-            <div className="flex items-center space-x-4 text-sm">
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
               <span className="text-gray-500 font-medium">
                 {habit.category}
               </span>
@@ -194,11 +190,12 @@ export default function HabitCard({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+        {/* Right: Edit/Delete */}
+        <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
           {!isDefaultTimeHabit && (
             <button
               onClick={() => onEdit(habit)}
-              className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-110"
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-110"
               title="Edit habit"
             >
               <Edit2 size={16} />
@@ -206,7 +203,7 @@ export default function HabitCard({
           )}
           <button
             onClick={() => onDelete(habit.id)}
-            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-110"
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-110"
             title="Delete habit"
           >
             <Trash2 size={16} />

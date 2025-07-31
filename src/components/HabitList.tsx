@@ -1,7 +1,6 @@
-import { Target, TrendingUp, Calendar, Sparkles } from 'lucide-react';
-import HabitCard from './HabitCard';
+import { Target, TrendingUp, Calendar, Sparkles } from "lucide-react";
+import HabitCard from "./HabitCard";
 
-// Habit type definition
 interface Habit {
   id: string;
   name: string;
@@ -19,18 +18,21 @@ interface HabitListProps {
   onDelete: (habitId: string) => void;
 }
 
-export default function HabitList({ habits, onToggleComplete, onEdit, onDelete }: HabitListProps) {
+export default function HabitList({
+  habits,
+  onToggleComplete,
+  onEdit,
+  onDelete,
+}: HabitListProps) {
   const today = new Date().toDateString();
 
-  // Sort habits: incomplete first, then completed
   const sortedHabits = [...habits].sort((a, b) => {
     const aCompleted = a.completedDates.includes(today);
     const bCompleted = b.completedDates.includes(today);
 
     if (aCompleted && !bCompleted) return 1;
     if (!aCompleted && bCompleted) return -1;
-    
-    // If both have same completion status, sort by time
+
     const aTime = new Date(a.dateTime).getTime();
     const bTime = new Date(b.dateTime).getTime();
     return aTime - bTime;
@@ -38,37 +40,37 @@ export default function HabitList({ habits, onToggleComplete, onEdit, onDelete }
 
   if (habits.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[60vh] px-8">
+      <div className="flex-1 flex items-center justify-center min-h-[60vh] px-6 sm:px-10 md:px-16">
         <div className="text-center max-w-md">
-          <div className="relative mb-8">
-            <div className="w-32 h-32 bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-full flex items-center justify-center mx-auto shadow-inner border border-gray-200/50">
-              <Target size={48} className="text-gray-400" />
+          <div className="relative mb-6 sm:mb-8">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-full flex items-center justify-center mx-auto shadow-inner border border-gray-200/50">
+              <Target size={40} className="text-gray-400 sm:size-48" />
             </div>
-            <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-              <Sparkles size={16} className="text-white" />
+            <div className="absolute -top-2 -right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+              <Sparkles size={14} className="text-white" />
             </div>
           </div>
-          
-          <h3 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-4">
+
+          <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-3 sm:mb-4">
             Start Your Journey
           </h3>
-          <p className="text-gray-500 leading-relaxed mb-8">
-            Build positive habits that will transform your daily routine. 
+          <p className="text-sm sm:text-base text-gray-500 leading-relaxed mb-6 sm:mb-8">
+            Build positive habits that will transform your daily routine.
             Every small step counts towards your bigger goals.
           </p>
-          
-          <div className="flex items-center justify-center space-x-6 text-sm text-gray-400">
-            <div className="flex items-center space-x-2">
+
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-400">
+            <div className="flex items-center gap-2">
               <Calendar size={16} />
               <span>Track Daily</span>
             </div>
-            <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-            <div className="flex items-center space-x-2">
+            <div className="w-1 h-1 bg-gray-300 rounded-full hidden sm:block"></div>
+            <div className="flex items-center gap-2">
               <TrendingUp size={16} />
               <span>Build Streaks</span>
             </div>
-            <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-            <div className="flex items-center space-x-2">
+            <div className="w-1 h-1 bg-gray-300 rounded-full hidden sm:block"></div>
+            <div className="flex items-center gap-2">
               <Target size={16} />
               <span>Reach Goals</span>
             </div>
@@ -80,16 +82,13 @@ export default function HabitList({ habits, onToggleComplete, onEdit, onDelete }
 
   return (
     <div className="flex-1 bg-gradient-to-br from-gray-50/50 via-white to-blue-50/20">
-      {/* Habits List */}
-      <div className="max-w-5xl mx-auto px-8 py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="grid gap-6">
           {sortedHabits.map((habit, index) => (
             <div
               key={habit.id}
               className="transform transition-all duration-200 animate-fadeInUp"
-              style={{ 
-                animationDelay: `${index * 100}ms`,
-              }}
+              style={{ animationDelay: `${index * 100}ms` }}
             >
               <HabitCard
                 habit={habit}
@@ -113,7 +112,7 @@ export default function HabitList({ habits, onToggleComplete, onEdit, onDelete }
             transform: translateY(0);
           }
         }
-        
+
         .animate-fadeInUp {
           animation: fadeInUp 0.6s ease-out forwards;
         }

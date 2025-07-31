@@ -111,7 +111,7 @@ export default function Header({
 
       <div className="relative max-w-7xl mx-auto px-8 py-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex flex-col lg:flex-row items-start justify-between gap-6 mb-8">
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl">
@@ -129,7 +129,7 @@ export default function Header({
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-5xl font-extralight text-gray-900 tracking-tight leading-none">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extralight text-gray-900 tracking-tight leading-none">
                 {dayName}
               </h1>
               <div className="flex items-center space-x-3">
@@ -197,7 +197,7 @@ export default function Header({
         </div>
 
         {/* Scrollable Year Calendar */}
-        <div className="overflow-x-auto mb-8 pb-2 scrollbar-hidden">
+        <div className="overflow-x-auto mb-8 pb-2 scrollbar-hidden -mx-4 px-4 sm:mx-0 sm:px-0">
           <div className="flex items-start space-x-1 min-w-max px-1">
             {Object.entries(groupedDays).map(([monthKey, monthDays]) => (
               <div key={monthKey} className="flex items-start space-x-1">
@@ -262,7 +262,7 @@ export default function Header({
         {/* Progress Section */}
         <div className="bg-white/40 backdrop-blur-sm rounded-3xl p-6 border border-white/30">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
                   Today's Progress
