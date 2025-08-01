@@ -27,7 +27,8 @@ interface HabitCardProps {
   onToggleComplete: (habitId: string) => void;
   onEdit: (habit: Habit) => void;
   onDelete: (habitId: string) => void;
-  selectedDate?: string | null; // ADDED: selectedDate prop
+  selectedDate?: string | null;
+  allHabits?: Habit[]; // Add this to access all habits for streak calculation
 }
 
 export default function HabitCard({
@@ -35,9 +36,9 @@ export default function HabitCard({
   onToggleComplete,
   onEdit,
   onDelete,
-  selectedDate, // ADDED: receive selectedDate
+  selectedDate,
+  allHabits = [], // Default to empty array
 }: HabitCardProps) {
-  // FIXED: Use selectedDate or default to today
   const targetDateString = selectedDate
     ? new Date(selectedDate).toDateString()
     : new Date().toDateString();
@@ -45,7 +46,6 @@ export default function HabitCard({
   const isDefaultTimeHabit =
     habit.id === "wake-time" || habit.id === "winddown-time";
 
-  // FIXED: For default time habits, check localStorage; for others, check completedDates
   const isCompleted = isDefaultTimeHabit
     ? targetDateString === new Date().toDateString() &&
       JSON.parse(localStorage.getItem("default-completed") || "[]").includes(
@@ -55,6 +55,11 @@ export default function HabitCard({
 
   const isGoogleCalendarEvent = habit.id?.startsWith("gcal-");
   const isEvent = habit.type === "event" || isGoogleCalendarEvent;
+
+  // Check if this is part of a 7-day series
+  const is7DaySeries = () => {
+    return habit.type === "habit" && habit.id.includes('-20') && habit.id.match(/-\d{4}-\d{2}-\d{2}$/);
+  };
 
   const categoryIcons: { [key: string]: JSX.Element } = {
     "Health & Fitness": <FaRunning className="text-pink-600" />,
@@ -67,36 +72,78 @@ export default function HabitCard({
     Calendar: <Calendar className="text-blue-600" />,
     Other: <FaStar className="text-gray-500" />,
   };
-
+  // Simplified and more reliable streak calculation
   const getStreakCount = () => {
     // Only show streaks for habits (not events, tasks, or default time habits)
-    if (isEvent || isDefaultTimeHabit || habit.type === "task") return 0;
+    if (habit.type !== "habit" || isDefaultTimeHabit) {
+      return 0;
+    }
 
-    // If not completed today, return 0 (no streak shown)
-    if (!isCompleted) return 0;
+    // If current habit is not completed, streak is 0
+    if (!isCompleted) {
+      console.log("❌ Current habit not completed, streak = 0");
+      return 0;
+    }
 
-    // Sort dates in descending order (newest first)
-    const sortedDates = [...habit.completedDates]
-      .map((dateStr) => new Date(dateStr))
-      .sort((a, b) => b.getTime() - a.getTime());
+    console.log(`🔍 Calculating streak for habit: ${habit.name} (${habit.id})`);
+    
+    // Get the base name for comparison (remove emoji prefixes from Google Calendar)
+    const getCleanName = (name: string) => name.replace(/^🎯\s*/, '').toLowerCase().trim();
+    const currentHabitName = getCleanName(habit.name);
+    
+    // Find all habits with the same name (for Google Calendar) or base ID (for local habits)
+    const relatedHabits = allHabits.filter(h => {
+      if (h.type !== 'habit') return false;
+      
+      // Compare by clean name for all habits (works for both local and Google Calendar)
+      const relatedName = getCleanName(h.name);
+      return relatedName === currentHabitName;
+    });
 
-    let streak = 1; // Start with 1 since we're completed today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    console.log(`🔗 Found ${relatedHabits.length} habits with name "${currentHabitName}"`);
+    relatedHabits.forEach(h => {
+      console.log(`  - ${h.name} (${h.id}) - ${new Date(h.dateTime).toDateString()} - Completed: ${h.completedDates.length} days`);
+    });
 
-    // Check previous days for consecutive completion
-    const currentDate = new Date(today);
-    for (let i = 1; i <= sortedDates.length; i++) {
-      currentDate.setDate(currentDate.getDate() - 1);
-      const prevDateStr = currentDate.toDateString();
-
-      if (habit.completedDates.includes(prevDateStr)) {
+    // Calculate streak by checking consecutive days backwards from current date
+    let streak = 0;
+    const checkDate = selectedDate ? new Date(selectedDate) : new Date();
+    checkDate.setHours(0, 0, 0, 0);
+    
+    for (let daysBack = 0; daysBack < 365; daysBack++) { // Check up to 1 year
+      const currentCheckDate = new Date(checkDate);
+      currentCheckDate.setDate(currentCheckDate.getDate() - daysBack);
+      const checkDateString = currentCheckDate.toDateString();
+      
+      // Find if any habit exists for this date and is completed
+      const habitForThisDate = relatedHabits.find(h => {
+        const habitDate = new Date(h.dateTime);
+        return habitDate.toDateString() === checkDateString;
+      });
+      
+      if (habitForThisDate && habitForThisDate.completedDates.includes(checkDateString)) {
         streak++;
+        console.log(`✅ Day ${daysBack}: ${checkDateString} - Found completed habit: ${habitForThisDate.name}`);
       } else {
-        break; // Streak ends when we find a gap
+        if (daysBack === 0) {
+          // If today/selected date is not completed, no streak
+          console.log(`❌ Current date ${checkDateString} not completed, no streak`);
+          return 0;
+        } else {
+          // Break streak on first non-completed day
+          console.log(`❌ Day ${daysBack}: ${checkDateString} - No completed habit found, breaking streak`);
+          break;
+        }
+      }
+      
+      // Safety limit
+      if (streak >= 100) {
+        console.log("⚠️ Streak limit reached (100 days)");
+        break;
       }
     }
 
+    console.log(`🎯 Final streak: ${streak} days`);
     return streak;
   };
 
@@ -196,6 +243,13 @@ export default function HabitCard({
         </div>
       )}
 
+      {/* 7-Day Series Badge for recurring habits */}
+      {is7DaySeries() && (
+        <div className="absolute top-2 right-2 bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-medium">
+          7-Day Series
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left: Check + Info */}
         <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 flex-1">
@@ -203,7 +257,6 @@ export default function HabitCard({
           <button
             onClick={() => {
               onToggleComplete(habit.id);
-              // FIXED: Use proper completion check based on habit type and selected date
               const alreadyCompleted = isDefaultTimeHabit
                 ? targetDateString === new Date().toDateString() &&
                   JSON.parse(
@@ -282,10 +335,13 @@ export default function HabitCard({
               <span className="text-gray-500 font-medium">
                 {habit.category}
               </span>
+              {/* Show streak for both completed habits and Google Calendar synced habits */}
               {isCompleted && habit.type === "habit" && streak > 0 && (
                 <div className="flex items-center space-x-1 text-orange-600">
                   <TrendingUp size={14} />
-                  <span className="font-semibold">{streak} day streak</span>
+                  <span className="font-semibold">
+                    {streak} day{streak > 1 ? 's' : ''} streak
+                  </span>
                 </div>
               )}
             </div>
@@ -307,9 +363,13 @@ export default function HabitCard({
           )}
           <button
             onClick={() => {
+              const is7DayHabit = is7DaySeries();
+              
               const confirmMessage = isGoogleCalendarEvent
                 ? "This will delete the event from both your habit tracker and Google Calendar. Are you sure?"
-                : `Delete this ${isEvent ? "event" : "habit"}?`;
+                : is7DayHabit
+                ? "This will delete this specific day from your 7-day habit series. Are you sure?"
+                : `Delete this ${isEvent ? "event" : habit.type || "habit"}?`;
 
               if (window.confirm(confirmMessage)) {
                 onDelete(habit.id);

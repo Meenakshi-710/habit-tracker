@@ -21,7 +21,8 @@ interface HabitListProps {
   onToggleComplete: (habitId: string) => void;
   onEdit: (habit: Habit) => void;
   onDelete: (habitId: string) => void;
-  selectedDate?: string | null; // ADDED: selectedDate prop
+  selectedDate?: string | null;
+  allHabits?: Habit[]; // Add this prop to pass all habits for streak calculation
 }
 
 export default function HabitList({
@@ -29,15 +30,14 @@ export default function HabitList({
   onToggleComplete,
   onEdit,
   onDelete,
-  selectedDate, // ADDED: receive selectedDate
+  selectedDate,
+  allHabits = [], // Default to empty array
 }: HabitListProps) {
-  // FIXED: Use selectedDate or default to today
   const targetDateString = selectedDate 
     ? new Date(selectedDate).toDateString() 
     : new Date().toDateString();
 
   const sortedHabits = [...habits].sort((a, b) => {
-    // FIXED: Check completion status based on the selected date
     const isDefaultTimeHabitA = a.id === "wake-time" || a.id === "winddown-time";
     const isDefaultTimeHabitB = b.id === "wake-time" || b.id === "winddown-time";
     
@@ -60,6 +60,7 @@ export default function HabitList({
     const bTime = new Date(b.dateTime).getTime();
     return aTime - bTime;
   });
+
 
   if (habits.length === 0) {
     return (
@@ -106,6 +107,7 @@ export default function HabitList({
   return (
     <div className="flex-1 bg-gradient-to-br from-gray-50/50 via-white to-blue-50/20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Daily Summary */}
         <div className="grid gap-6">
           {sortedHabits.map((habit, index) => (
             <div
@@ -115,7 +117,8 @@ export default function HabitList({
             >
               <HabitCard
                 habit={habit}
-                selectedDate={selectedDate} // ADDED: Pass selectedDate to HabitCard
+                selectedDate={selectedDate}
+                allHabits={allHabits} // Pass all habits for streak calculation
                 onToggleComplete={onToggleComplete}
                 onEdit={onEdit}
                 onDelete={onDelete}

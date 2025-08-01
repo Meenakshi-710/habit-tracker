@@ -148,13 +148,36 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
   dateTime: string;
   remindBeforeMinutes?: number;
   isHabit?: boolean;
+  type?: 'habit' | 'task' | 'event';
+  duration?: number; // Duration in minutes, default 60
 }) => {
   const startDateTime = new Date(eventData.dateTime);
-  const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // Default 1 hour duration
+  
+  // Set different durations based on type
+  let durationMinutes = eventData.duration || 60; // Default 1 hour
+  if (eventData.type === 'habit') {
+    durationMinutes = 30; // Habits typically shorter
+  } else if (eventData.type === 'task') {
+    durationMinutes = 60; // Tasks can be longer
+  }
+  
+  const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60 * 1000);
+
+  // Create different titles and descriptions based on type
+  let eventTitle = eventData.name;
+  let eventDescription = eventData.description || "";
+  
+  if (eventData.type === 'habit') {
+    eventTitle = `🎯 ${eventData.name}`;
+    eventDescription = `Daily Habit: ${eventData.name}\n\n${eventDescription}`.trim();
+  } else if (eventData.type === 'task') {
+    eventTitle = `✅ ${eventData.name}`;
+    eventDescription = `Task: ${eventData.name}\n\n${eventDescription}`.trim();
+  }
 
   const event = {
-    summary: eventData.name,
-    description: eventData.description || "",
+    summary: eventTitle,
+    description: eventDescription,
     start: {
       dateTime: startDateTime.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -163,6 +186,8 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
       dateTime: endDateTime.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
+    // Set different colors for different types
+    colorId: eventData.type === 'habit' ? '10' : eventData.type === 'task' ? '2' : '1', // Green for habits, Yellow for tasks, Blue for events
     reminders: {
       useDefault: false,
       overrides: eventData.remindBeforeMinutes && eventData.remindBeforeMinutes > 0 ? [
@@ -192,7 +217,7 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
     }
 
     const createdEvent = await response.json();
-    console.log("✅ Event created successfully:", createdEvent.id);
+    console.log(`✅ ${eventData.type || 'Event'} created successfully in Google Calendar:`, createdEvent.id);
     return createdEvent;
   } catch (err) {
     console.error("❌ Create event error:", err);
@@ -208,16 +233,39 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
   description?: string;
   dateTime: string;
   remindBeforeMinutes?: number;
+  type?: 'habit' | 'task' | 'event';
+  duration?: number;
 }) => {
   // Remove the 'gcal-' prefix if present to get the actual Google Calendar event ID
   const actualEventId = eventId.startsWith('gcal-') ? eventId.substring(5) : eventId;
   
   const startDateTime = new Date(eventData.dateTime);
-  const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // Default 1 hour duration
+  
+  // Set different durations based on type
+  let durationMinutes = eventData.duration || 60;
+  if (eventData.type === 'habit') {
+    durationMinutes = 30;
+  } else if (eventData.type === 'task') {
+    durationMinutes = 60;
+  }
+  
+  const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60 * 1000);
+
+  // Create different titles and descriptions based on type
+  let eventTitle = eventData.name;
+  let eventDescription = eventData.description || "";
+  
+  if (eventData.type === 'habit') {
+    eventTitle = `🎯 ${eventData.name}`;
+    eventDescription = `Daily Habit: ${eventData.name}\n\n${eventDescription}`.trim();
+  } else if (eventData.type === 'task') {
+    eventTitle = `✅ ${eventData.name}`;
+    eventDescription = `Task: ${eventData.name}\n\n${eventDescription}`.trim();
+  }
 
   const event = {
-    summary: eventData.name,
-    description: eventData.description || "",
+    summary: eventTitle,
+    description: eventDescription,
     start: {
       dateTime: startDateTime.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -226,6 +274,7 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
       dateTime: endDateTime.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
+    colorId: eventData.type === 'habit' ? '10' : eventData.type === 'task' ? '2' : '1',
     reminders: {
       useDefault: false,
       overrides: eventData.remindBeforeMinutes && eventData.remindBeforeMinutes > 0 ? [
@@ -255,7 +304,7 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
     }
 
     const updatedEvent = await response.json();
-    console.log("✅ Event updated successfully:", updatedEvent.id);
+    console.log(`✅ ${eventData.type || 'Event'} updated successfully in Google Calendar:`, updatedEvent.id);
     return updatedEvent;
   } catch (err) {
     console.error("❌ Update event error:", err);
