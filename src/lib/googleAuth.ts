@@ -1,4 +1,4 @@
-// Enhanced Google Calendar integration with CRUD operations
+// Enhanced Google Calendar integration with CRUD operations and yearly recurring habits
 const CLIENT_ID = "424581927926-c3v0f2n25upi474dl0lejm5hj5mbvdq2.apps.googleusercontent.com";
 
 // Updated scopes to include write permissions
@@ -11,6 +11,26 @@ const REDIRECT_URI = isChromeExtension
   : window.location.origin;
 
 console.log("OAuth Redirect URI:", REDIRECT_URI);
+
+// Define proper TypeScript interface for Google Calendar event
+interface GoogleCalendarEvent {
+  summary: string;
+  description: string;
+  start: {
+    dateTime: string;
+    timeZone: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone: string;
+  };
+  colorId: string;
+  reminders: {
+    useDefault: boolean;
+    overrides: { method: string; minutes: number; }[];
+  };
+  recurrence?: string[]; // Optional recurrence property
+}
 
 /**
  * Launches Chrome extension OAuth flow and retrieves an access token.
@@ -116,7 +136,12 @@ export const getAuthToken = (): Promise<string> => {
  */
 export const getCalendarEvents = async (accessToken: string) => {
   const now = new Date().toISOString();
-  const endpoint = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&singleEvents=true&orderBy=startTime`;
+  // Fetch events for the next year to include all recurring instances
+  const nextYear = new Date();
+  nextYear.setFullYear(nextYear.getFullYear() + 1);
+  const timeMax = nextYear.toISOString();
+  
+  const endpoint = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=2500`;
 
   try {
     const response = await fetch(endpoint, {
@@ -140,7 +165,7 @@ export const getCalendarEvents = async (accessToken: string) => {
 };
 
 /**
- * Creates a new event in Google Calendar
+ * Creates a new event in Google Calendar with yearly recurrence for habits
  */
 export const createCalendarEvent = async (accessToken: string, eventData: {
   name: string;
@@ -150,6 +175,8 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
   isHabit?: boolean;
   type?: 'habit' | 'task' | 'event';
   duration?: number; // Duration in minutes, default 60
+  isRecurring?: boolean;
+  recurringType?: 'daily' | 'weekly' | 'monthly';
 }) => {
   const startDateTime = new Date(eventData.dateTime);
   
@@ -175,7 +202,8 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
     eventDescription = `Task: ${eventData.name}\n\n${eventDescription}`.trim();
   }
 
-  const event = {
+  // Create event object with proper typing
+  const event: GoogleCalendarEvent = {
     summary: eventTitle,
     description: eventDescription,
     start: {
@@ -197,6 +225,23 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
     }
   };
 
+  // Add recurrence rule for habits (daily recurring for a year)
+  if (eventData.type === 'habit' && eventData.isRecurring && eventData.recurringType === 'daily') {
+    // Calculate end date (1 year from start date)
+    const endDate = new Date(startDateTime);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    
+    // Format end date as YYYYMMDD for RRULE
+    const endDateString = endDate.toISOString().split('T')[0].replace(/-/g, '');
+    
+    // Add daily recurrence rule that repeats until end of year
+    event.recurrence = [
+      `RRULE:FREQ=DAILY;UNTIL=${endDateString}T235959Z`
+    ];
+    
+    console.log(`📅 Creating recurring habit: ${eventTitle} from ${startDateTime.toDateString()} to ${endDate.toDateString()}`);
+  }
+
   try {
     const response = await fetch(
       'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -217,7 +262,8 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
     }
 
     const createdEvent = await response.json();
-    console.log(`✅ ${eventData.type || 'Event'} created successfully in Google Calendar:`, createdEvent.id);
+    const recurringInfo = event.recurrence ? ' (recurring daily for 1 year)' : '';
+    console.log(`✅ ${eventData.type || 'Event'} created successfully in Google Calendar: ${createdEvent.id}${recurringInfo}`);
     return createdEvent;
   } catch (err) {
     console.error("❌ Create event error:", err);
@@ -235,6 +281,8 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
   remindBeforeMinutes?: number;
   type?: 'habit' | 'task' | 'event';
   duration?: number;
+  isRecurring?: boolean;
+  recurringType?: 'daily' | 'weekly' | 'monthly';
 }) => {
   // Remove the 'gcal-' prefix if present to get the actual Google Calendar event ID
   const actualEventId = eventId.startsWith('gcal-') ? eventId.substring(5) : eventId;
@@ -263,7 +311,8 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
     eventDescription = `Task: ${eventData.name}\n\n${eventDescription}`.trim();
   }
 
-  const event = {
+  // Create event object with proper typing
+  const event: GoogleCalendarEvent = {
     summary: eventTitle,
     description: eventDescription,
     start: {
@@ -283,6 +332,23 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
       ] : []
     }
   };
+
+  // Add recurrence rule for habits (daily recurring for a year)
+  if (eventData.type === 'habit' && eventData.isRecurring && eventData.recurringType === 'daily') {
+    // Calculate end date (1 year from start date)
+    const endDate = new Date(startDateTime);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    
+    // Format end date as YYYYMMDD for RRULE
+    const endDateString = endDate.toISOString().split('T')[0].replace(/-/g, '');
+    
+    // Add daily recurrence rule that repeats until end of year
+    event.recurrence = [
+      `RRULE:FREQ=DAILY;UNTIL=${endDateString}T235959Z`
+    ];
+    
+    console.log(`📅 Updating recurring habit: ${eventTitle} until ${endDate.toDateString()}`);
+  }
 
   try {
     const response = await fetch(
@@ -336,7 +402,7 @@ export const deleteCalendarEvent = async (accessToken: string, eventId: string) 
       throw new Error(`Failed to delete calendar event: ${response.statusText}`);
     }
 
-    console.log("✅ Event deleted successfully:", actualEventId);
+    console.log("✅ Event deleted successfully (including all recurring instances):", actualEventId);
     return true;
   } catch (err) {
     console.error("❌ Delete event error:", err);
@@ -352,6 +418,51 @@ export const isGoogleCalendarEvent = (habitId: string): boolean => {
 };
 
 /**
+ * Creates multiple calendar events for the whole year (alternative approach)
+ * Use this if the recurrence rule approach doesn't work as expected
+ */
+export const createYearlyHabitEvents = async (accessToken: string, eventData: {
+  name: string;
+  description?: string;
+  dateTime: string;
+  remindBeforeMinutes?: number;
+  type?: 'habit' | 'task' | 'event';
+  duration?: number;
+}) => {
+  const startDate = new Date(eventData.dateTime);
+  const events = [];
+  
+  console.log(`📅 Creating daily habit events for the whole year: ${eventData.name}`);
+  
+  // Create events for each day of the year
+  for (let dayOffset = 0; dayOffset < 365; dayOffset++) {
+    const currentDate = new Date(startDate);
+    currentDate.setDate(startDate.getDate() + dayOffset);
+    
+    const eventForDay = {
+      ...eventData,
+      dateTime: currentDate.toISOString(),
+    };
+    
+    try {
+      const createdEvent = await createCalendarEvent(accessToken, eventForDay);
+      events.push(createdEvent);
+      
+      // Add a small delay to avoid rate limiting
+      if (dayOffset % 10 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } catch (error) {
+      console.error(`Failed to create event for day ${dayOffset}:`, error);
+      // Continue with other days even if one fails
+    }
+  }
+  
+  console.log(`✅ Created ${events.length} daily habit events for the year`);
+  return events;
+};
+
+/**
  * Sync local habit changes with Google Calendar
  */
 export const syncWithGoogleCalendar = async (
@@ -363,15 +474,27 @@ export const syncWithGoogleCalendar = async (
   try {
     switch (operation) {
       case 'create':
-        if (habit.type === 'event') {
+        if (habit.type === 'habit' && habit.isRecurring) {
+          // For habits, create with recurrence
           return await createCalendarEvent(accessToken, {
             name: habit.name,
             description: habit.description,
             dateTime: habit.dateTime,
-            remindBeforeMinutes: habit.remindBeforeMinutes
+            remindBeforeMinutes: habit.remindBeforeMinutes,
+            type: habit.type,
+            isRecurring: habit.isRecurring,
+            recurringType: habit.recurringType
+          });
+        } else {
+          // For tasks and events, create single occurrence
+          return await createCalendarEvent(accessToken, {
+            name: habit.name,
+            description: habit.description,
+            dateTime: habit.dateTime,
+            remindBeforeMinutes: habit.remindBeforeMinutes,
+            type: habit.type
           });
         }
-        break;
         
       case 'update':
         if (isGoogleCalendarEvent(habit.id)) {
@@ -379,7 +502,10 @@ export const syncWithGoogleCalendar = async (
             name: habit.name,
             description: habit.description,
             dateTime: habit.dateTime,
-            remindBeforeMinutes: habit.remindBeforeMinutes
+            remindBeforeMinutes: habit.remindBeforeMinutes,
+            type: habit.type,
+            isRecurring: habit.isRecurring,
+            recurringType: habit.recurringType
           });
         }
         break;

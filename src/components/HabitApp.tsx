@@ -41,46 +41,32 @@ function HabitApp() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<Habit[]>([]);
 
-  // Helper function to generate habit ID for a specific date
-  const generateHabitId = (baseId: string, date: Date): string => {
-    const dateStr = date.toISOString().split("T")[0];
-    return `${baseId}-${dateStr}`;
-  };
-
-  // Helper function to create habits for 7 consecutive days
-  const createSevenDayHabits = (
+  const createDailyRecurringHabit = (
     baseHabit: Omit<Habit, "id" | "completedDates" | "createdAt">,
     startDate: Date
-  ): Habit[] => {
-    const habits: Habit[] = [];
-    const baseId =
-      Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  ): Habit => {
+    const baseId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    
+    // Set the time from the original habit but use the start date
+    const originalDateTime = new Date(baseHabit.dateTime);
+    const habitDateTime = new Date(startDate);
+    habitDateTime.setHours(originalDateTime.getHours());
+    habitDateTime.setMinutes(originalDateTime.getMinutes());
+    habitDateTime.setSeconds(0);
+    habitDateTime.setMilliseconds(0);
 
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
+    const habit: Habit = {
+      ...baseHabit,
+      id: baseId,
+      dateTime: habitDateTime.toISOString(),
+      completedDates: [],
+      createdAt: new Date().toISOString(),
+      type: baseHabit.type || "habit",
+      isRecurring: true, // Add this flag to identify recurring habits
+      recurringType: "daily", // Add this to specify recurrence type
+    };
 
-      // Set the time from the original habit but use the current date
-      const originalDateTime = new Date(baseHabit.dateTime);
-      const habitDateTime = new Date(currentDate);
-      habitDateTime.setHours(originalDateTime.getHours());
-      habitDateTime.setMinutes(originalDateTime.getMinutes());
-      habitDateTime.setSeconds(0);
-      habitDateTime.setMilliseconds(0);
-
-      const habit: Habit = {
-        ...baseHabit,
-        id: generateHabitId(baseId, currentDate),
-        dateTime: habitDateTime.toISOString(),
-        completedDates: [],
-        createdAt: new Date().toISOString(),
-        type: baseHabit.type || "habit",
-      };
-
-      habits.push(habit);
-    }
-
-    return habits;
+    return habit;
   };
 
   // Load calendar events from storage on mount
@@ -134,9 +120,13 @@ function HabitApp() {
             // Check if this is one of our created habits/tasks/events by looking at the title
             let type = "event"; // Default type
             let cleanName = event.summary || "Untitled Event";
+            let isRecurring = false;
+            let recurringType: "daily" | "weekly" | "monthly" | undefined = undefined;
 
             if (event.summary?.startsWith("🎯 ")) {
               type = "habit";
+              isRecurring = true;
+              recurringType = "daily";
               cleanName = event.summary.substring(2).trim(); // Remove emoji and space
             } else if (event.summary?.startsWith("✅ ")) {
               type = "task";
@@ -165,6 +155,8 @@ function HabitApp() {
               createdAt: new Date().toISOString(),
               type: type as "habit" | "task" | "event",
               remindBeforeMinutes: 0,
+              isRecurring,
+              recurringType,
             };
           });
 
@@ -225,6 +217,8 @@ function HabitApp() {
       dateTime: wakeTime.toISOString(),
       completedDates: defaultCompleted.includes("wake-time") ? [todayDate] : [],
       createdAt: new Date().toISOString(),
+      isRecurring: true,
+      recurringType: "daily",
     });
   }
 
@@ -240,6 +234,8 @@ function HabitApp() {
         ? [todayDate]
         : [],
       createdAt: new Date().toISOString(),
+      isRecurring: true,
+      recurringType: "daily",
     });
   }
 
@@ -259,12 +255,31 @@ function HabitApp() {
 
     return uniqueHabits;
   }, [defaultTimeHabits, habits, calendarEvents]);
+  
   const selectedDateString = selectedDate
     ? new Date(selectedDate).toDateString()
     : todayDateString;
 
   const habitsForSelectedDate = allHabits.filter((habit) => {
     const habitDate = new Date(habit.dateTime).toDateString();
+    const selectedDateString = selectedDate
+      ? new Date(selectedDate).toDateString()
+      : todayDateString;
+    
+    // For recurring daily habits, show on every day from the start date onwards
+    if (habit.isRecurring && habit.recurringType === "daily") {
+      const startDate = new Date(habit.dateTime);
+      const checkDate = new Date(selectedDateString);
+      
+      // Reset times to compare dates only
+      startDate.setHours(0, 0, 0, 0);
+      checkDate.setHours(0, 0, 0, 0);
+      
+      // Only show if the selected date is on or after the habit start date
+      return checkDate >= startDate;
+    }
+    
+    // For non-recurring habits, tasks, and events, match exact date
     return habitDate === selectedDateString;
   });
 
@@ -311,7 +326,6 @@ function HabitApp() {
 
   const handleTabChange = (tab: string) => setActiveTab(tab);
 
-  // Enhanced addHabit with 7-day creation only for habits, single day for tasks/events
   const addHabit = useCallback(
     async (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
       setIsLoading(true);
@@ -319,60 +333,50 @@ function HabitApp() {
         const startDate = new Date(data.dateTime);
         startDate.setHours(0, 0, 0, 0); // Reset to start of day for consistent date calculation
 
-        // Only create 7-day recurring entries for habits
+        // Create daily recurring habit for habits, single entry for tasks/events
         if (data.type === "habit") {
-          const sevenDayHabits = createSevenDayHabits(data, startDate);
+          const recurringHabit = createDailyRecurringHabit(data, startDate);
 
-          // SYNC EACH DAY TO GOOGLE CALENDAR if connected
+          // SYNC TO GOOGLE CALENDAR if connected
           if (accessToken && isCalendarConnected) {
             try {
-              const calendarPromises = sevenDayHabits.map(async (habit) => {
-                const calendarEvent = await createCalendarEvent(accessToken, {
-                  name: habit.name,
-                  description:
-                    habit.description || `Daily habit: ${habit.name}`,
-                  dateTime: habit.dateTime,
-                  remindBeforeMinutes: habit.remindBeforeMinutes || 0,
-                  type: "habit",
-                });
-
-                // Return the habit with Google Calendar ID
-                return {
-                  ...habit,
-                  id: `gcal-${calendarEvent.id}`,
-                };
+              // Pass the recurring information to create yearly recurring events
+              const calendarEvent = await createCalendarEvent(accessToken, {
+                name: recurringHabit.name,
+                description: recurringHabit.description || `Daily habit: ${recurringHabit.name}`,
+                dateTime: recurringHabit.dateTime,
+                remindBeforeMinutes: recurringHabit.remindBeforeMinutes || 0,
+                type: "habit",
+                isRecurring: true,
+                recurringType: "daily"
               });
 
-              // Wait for all calendar events to be created
-              const syncedHabits = await Promise.all(calendarPromises);
+              // Return the habit with Google Calendar ID and our custom properties
+              const syncedHabit = {
+                ...recurringHabit,
+                id: `gcal-${calendarEvent.id}`,
+              };
 
               // Add ONLY to calendarEvents (not to habits) to avoid duplicates
-              setCalendarEvents((prev) => [...prev, ...syncedHabits]);
+              setCalendarEvents((prev) => [...prev, syncedHabit]);
 
-              console.log(
-                `✅ Created and synced ${syncedHabits.length} habits to Google Calendar`
-              );
+              console.log(`✅ Created and synced daily recurring habit to Google Calendar`);
             } catch (calendarError) {
-              console.error(
-                "❌ Failed to sync to Google Calendar:",
-                calendarError
-              );
+              console.error("❌ Failed to sync to Google Calendar:", calendarError);
               // If calendar sync fails, add to local habits instead
-              setHabits((prev) => [...prev, ...sevenDayHabits]);
+              setHabits((prev) => [...prev, recurringHabit]);
               alert(
-                "Habits created locally but failed to sync with Google Calendar. You can try again later."
+                "Habit created locally but failed to sync with Google Calendar. You can try again later."
               );
             }
           } else {
             // No calendar connection, add to local habits
-            setHabits((prev) => [...prev, ...sevenDayHabits]);
+            setHabits((prev) => [...prev, recurringHabit]);
           }
 
-          console.log(
-            `✅ Created ${sevenDayHabits.length} recurring habits for 7 days`
-          );
+          console.log(`✅ Created daily recurring habit`);
         }
-        // For tasks and events, create single entry
+        // For tasks and events, create single entry (unchanged)
         else {
           const newItem: Habit = {
             ...data,
@@ -394,29 +398,19 @@ function HabitApp() {
               });
 
               newItem.id = `gcal-${calendarEvent.id}`;
-              // Add ONLY to calendarEvents for Google Calendar synced events
               setCalendarEvents((prev) => [...prev, newItem]);
               console.log(
-                `✅ ${
-                  data.type === "task" ? "Task" : "Event"
-                } created in Google Calendar:`,
+                `✅ ${data.type === "task" ? "Task" : "Event"} created in Google Calendar:`,
                 calendarEvent.id
               );
             } catch (calendarError) {
-              console.error(
-                "❌ Failed to create in Google Calendar:",
-                calendarError
-              );
-              // If calendar sync fails, add to local habits instead
+              console.error("❌ Failed to create in Google Calendar:", calendarError);
               setHabits((prev) => [...prev, newItem]);
               alert(
-                `${
-                  data.type === "task" ? "Task" : "Event"
-                } created locally but failed to sync with Google Calendar. You can try again later.`
+                `${data.type === "task" ? "Task" : "Event"} created locally but failed to sync with Google Calendar. You can try again later.`
               );
             }
           } else {
-            // No calendar connection, add to local habits
             setHabits((prev) => [...prev, newItem]);
           }
         }
@@ -427,7 +421,7 @@ function HabitApp() {
         setIsLoading(false);
       }
     },
-    [setHabits, accessToken, isCalendarConnected, setCalendarEvents]
+    [setHabits, accessToken, isCalendarConnected, setCalendarEvents, createDailyRecurringHabit]
   );
 
   // Enhanced updateHabit with Google Calendar integration and proper type handling
@@ -443,7 +437,9 @@ function HabitApp() {
             description: data.description || "",
             dateTime: data.dateTime,
             remindBeforeMinutes: data.remindBeforeMinutes || 0,
-            type: data.type || editingItem.type || "event", // Pass the type information
+            type: data.type || editingItem.type || "event",
+            isRecurring: editingItem.isRecurring,
+            recurringType: editingItem.recurringType
           });
 
           setCalendarEvents((prev) =>
@@ -478,46 +474,30 @@ function HabitApp() {
     async (habitId: string) => {
       setIsLoading(true);
       try {
-        // Handle default time habits
+        // Handle default time habits (unchanged)
         if (habitId === "wake-time") {
           localStorage.removeItem("wake-time");
-          setDefaultCompleted((prev) =>
-            prev.filter((id) => id !== "wake-time")
-          );
+          setDefaultCompleted((prev) => prev.filter((id) => id !== "wake-time"));
         } else if (habitId === "winddown-time") {
           localStorage.removeItem("winddown-time");
-          setDefaultCompleted((prev) =>
-            prev.filter((id) => id !== "winddown-time")
-          );
+          setDefaultCompleted((prev) => prev.filter((id) => id !== "winddown-time"));
         }
-        // Handle Google Calendar events (synced habits, tasks, events)
+        // Handle Google Calendar events
         else if (isGoogleCalendarEvent(habitId) && accessToken) {
           try {
             await deleteCalendarEvent(accessToken, habitId);
-
-            // Remove from calendarEvents state
-            setCalendarEvents((prev) =>
-              prev.filter((event) => event.id !== habitId)
-            );
-
-            console.log("✅ Event deleted from Google Calendar");
+            setCalendarEvents((prev) => prev.filter((event) => event.id !== habitId));
+            console.log("✅ Recurring habit deleted from Google Calendar");
           } catch (calendarError) {
-            console.error(
-              "❌ Failed to delete from Google Calendar:",
-              calendarError
-            );
-
-            // Even if Google Calendar delete fails, remove from local state
-            setCalendarEvents((prev) =>
-              prev.filter((event) => event.id !== habitId)
-            );
-
+            console.error("❌ Failed to delete from Google Calendar:", calendarError);
+            // Remove from local state even if Google Calendar delete fails
+            setCalendarEvents((prev) => prev.filter((event) => event.id !== habitId));
             alert(
               "Failed to delete from Google Calendar, but removed locally. The item may still appear in your Google Calendar."
             );
           }
         }
-        // Handle local habits/tasks/events
+        // Handle local habits
         else {
           setHabits((prev) => prev.filter((habit) => habit.id !== habitId));
         }

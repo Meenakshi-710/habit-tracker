@@ -61,6 +61,27 @@ export default function HabitCard({
     return habit.type === "habit" && habit.id.includes('-20') && habit.id.match(/-\d{4}-\d{2}-\d{2}$/);
   };
 
+  // Helper function to get appropriate delete confirmation message
+  const getDeleteConfirmationMessage = (habit: Habit) => {
+    const isGoogleCalendarEvent = habit.id?.startsWith("gcal-");
+    const is7DaySeries = habit.type === "habit" && (
+      (habit.id.includes('-20') && habit.id.match(/-\d{4}-\d{2}-\d{2}$/)) || // Local 7-day series
+      isGoogleCalendarEvent // Google Calendar habits are always treated as series
+    );
+    
+    if (isGoogleCalendarEvent) {
+      if (habit.type === 'habit') {
+        return "This will delete the entire habit series from both your habit tracker and Google Calendar. Are you sure?";
+      } else {
+        return "This will delete the event from both your habit tracker and Google Calendar. Are you sure?";
+      }
+    } else if (is7DaySeries) {
+      return "This will delete the entire habit series. Are you sure?";
+    } else {
+      return `Delete this ${habit.type || "habit"}?`;
+    }
+  };
+
   const categoryIcons: { [key: string]: JSX.Element } = {
     "Health & Fitness": <FaRunning className="text-pink-600" />,
     Learning: <FaBook className="text-blue-600" />,
@@ -72,6 +93,7 @@ export default function HabitCard({
     Calendar: <Calendar className="text-blue-600" />,
     Other: <FaStar className="text-gray-500" />,
   };
+  
   // Simplified and more reliable streak calculation
   const getStreakCount = () => {
     // Only show streaks for habits (not events, tasks, or default time habits)
@@ -363,14 +385,7 @@ export default function HabitCard({
           )}
           <button
             onClick={() => {
-              const is7DayHabit = is7DaySeries();
-              
-              const confirmMessage = isGoogleCalendarEvent
-                ? "This will delete the event from both your habit tracker and Google Calendar. Are you sure?"
-                : is7DayHabit
-                ? "This will delete this specific day from your 7-day habit series. Are you sure?"
-                : `Delete this ${isEvent ? "event" : habit.type || "habit"}?`;
-
+              const confirmMessage = getDeleteConfirmationMessage(habit);
               if (window.confirm(confirmMessage)) {
                 onDelete(habit.id);
               }

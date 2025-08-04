@@ -10,4 +10,6 @@ export interface Habit {
   createdAt: string;
   type?: "habit" | "task" | "event";
   remindBeforeMinutes?: number;
+  isRecurring?: boolean;  // Add this
+  recurringType?: "daily" | "weekly" | "monthly";
 }
