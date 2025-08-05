@@ -74,6 +74,8 @@ export default function EnhancedForm({
   const [showReminderOptions, setShowReminderOptions] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
+  const [adjustedDateTime, setAdjustedDateTime] = useState<Date | null>(null);
 
   // Add custom styles for animations
   const customStyles = `
@@ -166,6 +168,43 @@ export default function EnhancedForm({
     return localDateTime.toISOString();
   };
 
+  // Function to check if selected time has passed and adjust if necessary
+  const checkAndAdjustDateTime = (selectedDate: string, selectedTime: string) => {
+    if (!selectedDate || !selectedTime) {
+      setShowTimeWarning(false);
+      setAdjustedDateTime(null);
+      return;
+    }
+
+    const now = new Date();
+    const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
+    
+    // Only check if the selected date is today
+    const today = new Date().toISOString().split("T")[0];
+    if (selectedDate === today && selectedDateTime <= now) {
+      // Time has passed, schedule for next day
+      const nextDay = new Date(selectedDateTime);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      setShowTimeWarning(true);
+      setAdjustedDateTime(nextDay);
+      
+      console.log('⏰ Time adjustment:', {
+        original: selectedDateTime.toLocaleString(),
+        adjusted: nextDay.toLocaleString(),
+        reason: 'Selected time has passed'
+      });
+    } else {
+      setShowTimeWarning(false);
+      setAdjustedDateTime(null);
+    }
+  };
+
+  // Watch for date and time changes to check if adjustment is needed
+  useEffect(() => {
+    checkAndAdjustDateTime(date, time);
+  }, [date, time]);
+
   useEffect(() => {
     if (isOpen) {
       const today = new Date().toISOString().split("T")[0];
@@ -197,6 +236,8 @@ export default function EnhancedForm({
         setActiveTab("habit");
       }
       setErrors({});
+      setShowTimeWarning(false);
+      setAdjustedDateTime(null);
     }
   }, [isOpen, editingItem, initialDate]);
 
@@ -214,6 +255,8 @@ export default function EnhancedForm({
 
   const handleClose = () => {
     setErrors({});
+    setShowTimeWarning(false);
+    setAdjustedDateTime(null);
     onClose();
   };
 
@@ -224,22 +267,34 @@ export default function EnhancedForm({
       title: title.trim(),
       description: description.trim(),
       date,
-      time
+      time,
+      showTimeWarning,
+      adjustedDateTime
     });
 
     if (title.trim() && date && time) {
-      const dateTime = createDateTime(date, time);
+      // Use adjusted date time if available, otherwise use selected date/time
+      const finalDateTime = adjustedDateTime 
+        ? adjustedDateTime.toISOString()
+        : createDateTime(date, time);
+      
       const itemData = {
         type: activeTab, // This should be "habit", "task", or "event"
         name: title.trim(),
         title: title.trim(),
         description: description.trim(),
-        dateTime,
+        dateTime: finalDateTime,
         remindBeforeMinutes: remindBefore,
         ...(activeTab === "habit" && { category, color }),
       };
       
-      console.log('📤 Submitting item data:', itemData);
+      console.log('📤 Submitting item data with final dateTime:', {
+        ...itemData,
+        originalDateTime: createDateTime(date, time),
+        finalDateTime,
+        wasAdjusted: !!adjustedDateTime
+      });
+      
       onSubmit(itemData);
       onClose();
     } else {
@@ -582,11 +637,16 @@ export default function EnhancedForm({
             )}
           </div>
 
+          {/* Final Schedule Display */}
           {date && time && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className={`border rounded-xl p-4 ${
+              showTimeWarning 
+                ? "bg-blue-50 border-blue-200" 
+                : "bg-blue-50 border-blue-200"
+            }`}>
               <p className="text-sm text-pink-600">
                 <strong>Scheduled for:</strong>{" "}
-                {new Date(createDateTime(date, time)).toLocaleString("en-IN", {
+                {(adjustedDateTime || new Date(createDateTime(date, time))).toLocaleString("en-IN", {
                   timeZone: "Asia/Kolkata",
                   dateStyle: "full",
                   timeStyle: "short",
@@ -596,7 +656,12 @@ export default function EnhancedForm({
                 <p className="text-sm text-pink-600 mt-1">
                   <strong>Reminder:</strong> {getReminderText()}
                 </p>
-                )}
+              )}
+              {showTimeWarning && (
+                <p className="text-sm text-black mt-1">
+                  <strong>Note:</strong> Scheduled for the next day due to past time.
+                </p>
+              )}
             </div>
           )}
 

@@ -1,4 +1,4 @@
-// Enhanced Google Calendar integration with CRUD operations and yearly recurring habits
+// Enhanced Google Calendar integration with CRUD operations, yearly recurring habits, and auto next-day scheduling
 const CLIENT_ID = "424581927926-c3v0f2n25upi474dl0lejm5hj5mbvdq2.apps.googleusercontent.com";
 
 // Updated scopes to include write permissions
@@ -31,6 +31,40 @@ interface GoogleCalendarEvent {
   };
   recurrence?: string[]; // Optional recurrence property
 }
+
+/**
+ * Helper function to check if a time has passed for today and adjust to next day if needed
+ */
+const adjustDateTimeIfPastToday = (dateTime: string): { adjustedDateTime: string; wasAdjusted: boolean } => {
+  const selectedDateTime = new Date(dateTime);
+  const now = new Date();
+  
+  // Check if the selected date is today
+  const selectedDate = selectedDateTime.toDateString();
+  const today = now.toDateString();
+  
+  if (selectedDate === today && selectedDateTime <= now) {
+    // Time has passed, move to next day
+    const nextDay = new Date(selectedDateTime);
+    nextDay.setDate(nextDay.getDate() + 1);
+    
+    console.log('⏰ Google Calendar: Time adjustment applied', {
+      original: selectedDateTime.toLocaleString(),
+      adjusted: nextDay.toLocaleString(),
+      reason: 'Selected time has passed today'
+    });
+    
+    return {
+      adjustedDateTime: nextDay.toISOString(),
+      wasAdjusted: true
+    };
+  }
+  
+  return {
+    adjustedDateTime: dateTime,
+    wasAdjusted: false
+  };
+};
 
 /**
  * Launches Chrome extension OAuth flow and retrieves an access token.
@@ -165,7 +199,7 @@ export const getCalendarEvents = async (accessToken: string) => {
 };
 
 /**
- * Creates a new event in Google Calendar with yearly recurrence for habits
+ * Creates a new event in Google Calendar with yearly recurrence for habits and auto next-day scheduling
  */
 export const createCalendarEvent = async (accessToken: string, eventData: {
   name: string;
@@ -178,7 +212,14 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
   isRecurring?: boolean;
   recurringType?: 'daily' | 'weekly' | 'monthly';
 }) => {
-  const startDateTime = new Date(eventData.dateTime);
+  // Apply auto next-day scheduling if time has passed
+  const { adjustedDateTime, wasAdjusted } = adjustDateTimeIfPastToday(eventData.dateTime);
+  
+  if (wasAdjusted) {
+    console.log(`📅 Google Calendar: Auto-scheduled ${eventData.type || 'event'} "${eventData.name}" to next day due to past time`);
+  }
+  
+  const startDateTime = new Date(adjustedDateTime);
   
   // Set different durations based on type
   let durationMinutes = eventData.duration || 60; // Default 1 hour
@@ -200,6 +241,12 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
   } else if (eventData.type === 'task') {
     eventTitle = `✅ ${eventData.name}`;
     eventDescription = `Task: ${eventData.name}\n\n${eventDescription}`.trim();
+  }
+
+  // Add adjustment note to description if time was adjusted
+  if (wasAdjusted) {
+    const originalTime = new Date(eventData.dateTime).toLocaleString();
+    eventDescription += `\n\n⏰ Note: Originally scheduled for ${originalTime}, automatically moved to next day due to past time.`;
   }
 
   // Create event object with proper typing
@@ -239,7 +286,8 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
       `RRULE:FREQ=DAILY;UNTIL=${endDateString}T235959Z`
     ];
     
-    console.log(`📅 Creating recurring habit: ${eventTitle} from ${startDateTime.toDateString()} to ${endDate.toDateString()}`);
+    const adjustmentNote = wasAdjusted ? ' (auto-adjusted to next day)' : '';
+    console.log(`📅 Creating recurring habit: ${eventTitle} from ${startDateTime.toDateString()} to ${endDate.toDateString()}${adjustmentNote}`);
   }
 
   try {
@@ -263,7 +311,8 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
 
     const createdEvent = await response.json();
     const recurringInfo = event.recurrence ? ' (recurring daily for 1 year)' : '';
-    console.log(`✅ ${eventData.type || 'Event'} created successfully in Google Calendar: ${createdEvent.id}${recurringInfo}`);
+    const adjustmentInfo = wasAdjusted ? ' [auto-adjusted to next day]' : '';
+    console.log(`✅ ${eventData.type || 'Event'} created successfully in Google Calendar: ${createdEvent.id}${recurringInfo}${adjustmentInfo}`);
     return createdEvent;
   } catch (err) {
     console.error("❌ Create event error:", err);
@@ -272,7 +321,7 @@ export const createCalendarEvent = async (accessToken: string, eventData: {
 };
 
 /**
- * Updates an existing event in Google Calendar
+ * Updates an existing event in Google Calendar with auto next-day scheduling
  */
 export const updateCalendarEvent = async (accessToken: string, eventId: string, eventData: {
   name: string;
@@ -287,7 +336,14 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
   // Remove the 'gcal-' prefix if present to get the actual Google Calendar event ID
   const actualEventId = eventId.startsWith('gcal-') ? eventId.substring(5) : eventId;
   
-  const startDateTime = new Date(eventData.dateTime);
+  // Apply auto next-day scheduling if time has passed
+  const { adjustedDateTime, wasAdjusted } = adjustDateTimeIfPastToday(eventData.dateTime);
+  
+  if (wasAdjusted) {
+    console.log(`📅 Google Calendar Update: Auto-scheduled ${eventData.type || 'event'} "${eventData.name}" to next day due to past time`);
+  }
+  
+  const startDateTime = new Date(adjustedDateTime);
   
   // Set different durations based on type
   let durationMinutes = eventData.duration || 60;
@@ -309,6 +365,12 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
   } else if (eventData.type === 'task') {
     eventTitle = `✅ ${eventData.name}`;
     eventDescription = `Task: ${eventData.name}\n\n${eventDescription}`.trim();
+  }
+
+  // Add adjustment note to description if time was adjusted
+  if (wasAdjusted) {
+    const originalTime = new Date(eventData.dateTime).toLocaleString();
+    eventDescription += `\n\n⏰ Note: Originally scheduled for ${originalTime}, automatically moved to next day due to past time.`;
   }
 
   // Create event object with proper typing
@@ -347,7 +409,8 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
       `RRULE:FREQ=DAILY;UNTIL=${endDateString}T235959Z`
     ];
     
-    console.log(`📅 Updating recurring habit: ${eventTitle} until ${endDate.toDateString()}`);
+    const adjustmentNote = wasAdjusted ? ' (auto-adjusted to next day)' : '';
+    console.log(`📅 Updating recurring habit: ${eventTitle} until ${endDate.toDateString()}${adjustmentNote}`);
   }
 
   try {
@@ -370,7 +433,8 @@ export const updateCalendarEvent = async (accessToken: string, eventId: string, 
     }
 
     const updatedEvent = await response.json();
-    console.log(`✅ ${eventData.type || 'Event'} updated successfully in Google Calendar:`, updatedEvent.id);
+    const adjustmentInfo = wasAdjusted ? ' [auto-adjusted to next day]' : '';
+    console.log(`✅ ${eventData.type || 'Event'} updated successfully in Google Calendar: ${updatedEvent.id}${adjustmentInfo}`);
     return updatedEvent;
   } catch (err) {
     console.error("❌ Update event error:", err);
@@ -429,10 +493,16 @@ export const createYearlyHabitEvents = async (accessToken: string, eventData: {
   type?: 'habit' | 'task' | 'event';
   duration?: number;
 }) => {
-  const startDate = new Date(eventData.dateTime);
+  // Apply auto next-day scheduling to the initial date
+  const { adjustedDateTime, wasAdjusted } = adjustDateTimeIfPastToday(eventData.dateTime);
+  const startDate = new Date(adjustedDateTime);
   const events = [];
   
-  console.log(`📅 Creating daily habit events for the whole year: ${eventData.name}`);
+  if (wasAdjusted) {
+    console.log(`📅 Creating yearly habit events with auto-adjustment: ${eventData.name} starting from next day`);
+  } else {
+    console.log(`📅 Creating yearly habit events: ${eventData.name}`);
+  }
   
   // Create events for each day of the year
   for (let dayOffset = 0; dayOffset < 365; dayOffset++) {
@@ -458,12 +528,13 @@ export const createYearlyHabitEvents = async (accessToken: string, eventData: {
     }
   }
   
-  console.log(`✅ Created ${events.length} daily habit events for the year`);
+  const adjustmentInfo = wasAdjusted ? ' (with auto next-day adjustment)' : '';
+  console.log(`✅ Created ${events.length} daily habit events for the year${adjustmentInfo}`);
   return events;
 };
 
 /**
- * Sync local habit changes with Google Calendar
+ * Sync local habit changes with Google Calendar (with auto next-day scheduling)
  */
 export const syncWithGoogleCalendar = async (
   accessToken: string, 
@@ -475,7 +546,7 @@ export const syncWithGoogleCalendar = async (
     switch (operation) {
       case 'create':
         if (habit.type === 'habit' && habit.isRecurring) {
-          // For habits, create with recurrence
+          // For habits, create with recurrence (with auto adjustment)
           return await createCalendarEvent(accessToken, {
             name: habit.name,
             description: habit.description,
@@ -486,7 +557,7 @@ export const syncWithGoogleCalendar = async (
             recurringType: habit.recurringType
           });
         } else {
-          // For tasks and events, create single occurrence
+          // For tasks and events, create single occurrence (with auto adjustment)
           return await createCalendarEvent(accessToken, {
             name: habit.name,
             description: habit.description,

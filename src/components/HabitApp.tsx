@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback, useEffect } from "react";
 import { Habit } from "../types/habit";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -44,39 +45,43 @@ function HabitApp() {
   // ADD: Chrome message listener for pin bar integration
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleChromeMessages = (message: any, _sender: any, sendResponse: any) => {
-      console.log('📨 HabitApp received message:', message);
-      
+    const handleChromeMessages = (
+      message: any,
+      _sender: any,
+      sendResponse: any
+    ) => {
+      console.log("📨 HabitApp received message:", message);
+
       switch (message.type) {
-        case 'OPEN_ADD_FORM':
-          console.log('➕ Opening add form from pin bar message');
+        case "OPEN_ADD_FORM":
+          console.log("➕ Opening add form from pin bar message");
           setEditingHabit(null);
           setIsFormOpen(true);
           sendResponse({ success: true });
           break;
-          
-        case 'OPEN_DASHBOARD':
-          console.log('🏠 Dashboard already open');
+
+        case "OPEN_DASHBOARD":
+          console.log("🏠 Dashboard already open");
           sendResponse({ success: true });
           break;
-          
-        case 'CALENDAR_STATUS_CHANGED':
-          console.log('📅 Calendar status changed:', message.payload);
+
+        case "CALENDAR_STATUS_CHANGED":
+          console.log("📅 Calendar status changed:", message.payload);
           if (message.payload?.connected !== undefined) {
             setIsCalendarConnected(message.payload.connected);
           }
           sendResponse({ success: true });
           break;
-          
+
         default:
-          console.log('❓ Unknown message type in HabitApp:', message.type);
-          sendResponse({ success: false, error: 'Unknown message type' });
+          console.log("❓ Unknown message type in HabitApp:", message.type);
+          sendResponse({ success: false, error: "Unknown message type" });
       }
     };
 
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
+    if (typeof chrome !== "undefined" && chrome.runtime) {
       chrome.runtime.onMessage.addListener(handleChromeMessages);
-      
+
       return () => {
         chrome.runtime.onMessage.removeListener(handleChromeMessages);
       };
@@ -87,30 +92,30 @@ function HabitApp() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      console.log('🔗 URL hash changed:', hash);
-      
-      if (hash === '#add-habit') {
-        console.log('➕ Opening add habit form from URL hash');
+      console.log("🔗 URL hash changed:", hash);
+
+      if (hash === "#add-habit") {
+        console.log("➕ Opening add habit form from URL hash");
         setEditingHabit(null);
         setIsFormOpen(true);
         // Clear the hash
-        window.history.replaceState(null, '', window.location.pathname);
-      } else if (hash === '#calendar-connect') {
-        console.log('📅 Triggering calendar connection from URL hash');
+        window.history.replaceState(null, "", window.location.pathname);
+      } else if (hash === "#calendar-connect") {
+        console.log("📅 Triggering calendar connection from URL hash");
         handleCalendarConnect();
         // Clear the hash
-        window.history.replaceState(null, '', window.location.pathname);
+        window.history.replaceState(null, "", window.location.pathname);
       }
     };
 
     // Check initial hash
     handleHashChange();
-    
+
     // Listen for hash changes
-    window.addEventListener('hashchange', handleHashChange);
-    
+    window.addEventListener("hashchange", handleHashChange);
+
     return () => {
-      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener("hashchange", handleHashChange);
     };
   }, []);
 
@@ -118,8 +123,9 @@ function HabitApp() {
     baseHabit: Omit<Habit, "id" | "completedDates" | "createdAt">,
     startDate: Date
   ): Habit => {
-    const baseId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    
+    const baseId =
+      Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
     // Set the time from the original habit but use the start date
     const originalDateTime = new Date(baseHabit.dateTime);
     const habitDateTime = new Date(startDate);
@@ -195,7 +201,8 @@ function HabitApp() {
             let type = "event"; // Default type
             let cleanName = event.summary || "Untitled Event";
             let isRecurring = false;
-            let recurringType: "daily" | "weekly" | "monthly" | undefined = undefined;
+            let recurringType: "daily" | "weekly" | "monthly" | undefined =
+              undefined;
 
             if (event.summary?.startsWith("🎯 ")) {
               type = "habit";
@@ -272,23 +279,25 @@ function HabitApp() {
     try {
       setIsLoading(true);
       console.log("🔐 Starting Google Calendar connection...");
-      
+
       const token = await getAuthToken();
       console.log("🔐 Token received:", token ? "✅" : "❌");
-      
+
       if (token) {
         setAccessToken(token);
         setIsCalendarConnected(true);
         localStorage.setItem("google_access_token", token);
-        
+
         // Notify background script and pin bar of status change
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime.sendMessage({
-            type: 'CALENDAR_STATUS_CHANGED',
-            payload: { connected: true }
-          }).catch(console.warn);
+        if (typeof chrome !== "undefined" && chrome.runtime) {
+          chrome.runtime
+            .sendMessage({
+              type: "CALENDAR_STATUS_CHANGED",
+              payload: { connected: true },
+            })
+            .catch(console.warn);
         }
-        
+
         console.log("✅ Google Calendar connected successfully");
       }
     } catch (err) {
@@ -301,21 +310,23 @@ function HabitApp() {
 
   const handleCalendarDisconnect = () => {
     console.log("🔌 Disconnecting from Google Calendar...");
-    
+
     setIsCalendarConnected(false);
     setAccessToken(null);
     localStorage.removeItem("google_access_token");
     setCalendarEvents([]);
     localStorage.removeItem("calendar-events");
-    
+
     // Notify background script and pin bar of status change
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'CALENDAR_STATUS_CHANGED',
-        payload: { connected: false }
-      }).catch(console.warn);
+    if (typeof chrome !== "undefined" && chrome.runtime) {
+      chrome.runtime
+        .sendMessage({
+          type: "CALENDAR_STATUS_CHANGED",
+          payload: { connected: false },
+        })
+        .catch(console.warn);
     }
-    
+
     console.log("✅ Google Calendar disconnected");
   };
 
@@ -368,7 +379,7 @@ function HabitApp() {
 
     return uniqueHabits;
   }, [defaultTimeHabits, habits, calendarEvents]);
-  
+
   const selectedDateString = selectedDate
     ? new Date(selectedDate).toDateString()
     : todayDateString;
@@ -378,20 +389,20 @@ function HabitApp() {
     const selectedDateString = selectedDate
       ? new Date(selectedDate).toDateString()
       : todayDateString;
-    
+
     // For recurring daily habits, show on every day from the start date onwards
     if (habit.isRecurring && habit.recurringType === "daily") {
       const startDate = new Date(habit.dateTime);
       const checkDate = new Date(selectedDateString);
-      
+
       // Reset times to compare dates only
       startDate.setHours(0, 0, 0, 0);
       checkDate.setHours(0, 0, 0, 0);
-      
+
       // Only show if the selected date is on or after the habit start date
       return checkDate >= startDate;
     }
-    
+
     // For non-recurring habits, tasks, and events, match exact date
     return habitDate === selectedDateString;
   });
@@ -442,8 +453,22 @@ function HabitApp() {
     async (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
       setIsLoading(true);
       try {
-        console.log('➕ Adding new item:', data);
-        
+        console.log("➕ Adding new item:", data);
+
+        // Check if the time has passed and log the adjustment
+        const now = new Date();
+        const selectedDateTime = new Date(data.dateTime);
+        const selectedDate = selectedDateTime.toDateString();
+        const today = now.toDateString();
+
+        let wasAutoAdjusted = false;
+        if (selectedDate === today && selectedDateTime <= now) {
+          wasAutoAdjusted = true;
+          console.log(
+            "⏰ Auto-scheduling detected: Time has passed, will be scheduled for next day"
+          );
+        }
+
         const startDate = new Date(data.dateTime);
         startDate.setHours(0, 0, 0, 0); // Reset to start of day for consistent date calculation
 
@@ -454,15 +479,17 @@ function HabitApp() {
           // SYNC TO GOOGLE CALENDAR if connected
           if (accessToken && isCalendarConnected) {
             try {
-              // Pass the recurring information to create yearly recurring events
+              // The createCalendarEvent function will automatically handle next-day scheduling
               const calendarEvent = await createCalendarEvent(accessToken, {
                 name: recurringHabit.name,
-                description: recurringHabit.description || `Daily habit: ${recurringHabit.name}`,
-                dateTime: recurringHabit.dateTime,
+                description:
+                  recurringHabit.description ||
+                  `Daily habit: ${recurringHabit.name}`,
+                dateTime: recurringHabit.dateTime, // This will be auto-adjusted in the Google Calendar function
                 remindBeforeMinutes: recurringHabit.remindBeforeMinutes || 0,
                 type: "habit",
                 isRecurring: true,
-                recurringType: "daily"
+                recurringType: "daily",
               });
 
               // Return the habit with Google Calendar ID and our custom properties
@@ -474,9 +501,17 @@ function HabitApp() {
               // Add ONLY to calendarEvents (not to habits) to avoid duplicates
               setCalendarEvents((prev) => [...prev, syncedHabit]);
 
-              console.log(`✅ Created and synced daily recurring habit to Google Calendar`);
+              const adjustmentMsg = wasAutoAdjusted
+                ? " (automatically moved to next day)"
+                : "";
+              console.log(
+                `✅ Created and synced daily recurring habit to Google Calendar${adjustmentMsg}`
+              );
             } catch (calendarError) {
-              console.error("❌ Failed to sync to Google Calendar:", calendarError);
+              console.error(
+                "❌ Failed to sync to Google Calendar:",
+                calendarError
+              );
               // If calendar sync fails, add to local habits instead
               setHabits((prev) => [...prev, recurringHabit]);
               alert(
@@ -500,39 +535,57 @@ function HabitApp() {
             type: data.type || "event",
           };
 
-          // Sync to Google Calendar if connected
+          // Sync to Google Calendar if connected (auto-scheduling will be handled there)
           if (accessToken && isCalendarConnected) {
             try {
               const calendarEvent = await createCalendarEvent(accessToken, {
                 name: data.name,
                 description: data.description || "",
-                dateTime: data.dateTime,
+                dateTime: data.dateTime, // This will be auto-adjusted in the Google Calendar function
                 remindBeforeMinutes: data.remindBeforeMinutes || 0,
                 type: data.type || "event",
               });
 
               newItem.id = `gcal-${calendarEvent.id}`;
               setCalendarEvents((prev) => [...prev, newItem]);
+
+              const adjustmentMsg = wasAutoAdjusted
+                ? " (automatically moved to next day)"
+                : "";
               console.log(
-                `✅ ${data.type === "task" ? "Task" : "Event"} created in Google Calendar:`,
+                `✅ ${
+                  data.type === "task" ? "Task" : "Event"
+                } created in Google Calendar${adjustmentMsg}:`,
                 calendarEvent.id
               );
             } catch (calendarError) {
-              console.error("❌ Failed to create in Google Calendar:", calendarError);
+              console.error(
+                "❌ Failed to create in Google Calendar:",
+                calendarError
+              );
               setHabits((prev) => [...prev, newItem]);
               alert(
-                `${data.type === "task" ? "Task" : "Event"} created locally but failed to sync with Google Calendar. You can try again later.`
+                `${
+                  data.type === "task" ? "Task" : "Event"
+                } created locally but failed to sync with Google Calendar. You can try again later.`
               );
             }
           } else {
             setHabits((prev) => [...prev, newItem]);
           }
         }
-        
+
         // Close form after successful creation
         setIsFormOpen(false);
         setEditingHabit(null);
-        
+
+        // Show success message with adjustment info if applicable
+        if (wasAutoAdjusted) {
+          // You could show a toast notification here
+          console.log(
+            "✅ Item created and automatically scheduled for next day due to past time"
+          );
+        }
       } catch (error) {
         console.error("❌ Failed to add habit:", error);
         alert("Failed to create item. Please try again.");
@@ -540,7 +593,13 @@ function HabitApp() {
         setIsLoading(false);
       }
     },
-    [setHabits, accessToken, isCalendarConnected, setCalendarEvents, createDailyRecurringHabit]
+    [
+      setHabits,
+      accessToken,
+      isCalendarConnected,
+      setCalendarEvents,
+      createDailyRecurringHabit,
+    ]
   );
 
   // Enhanced updateHabit with Google Calendar integration and proper type handling
@@ -550,8 +609,8 @@ function HabitApp() {
 
       setIsLoading(true);
       try {
-        console.log('🔧 Updating item:', editingItem.id, data);
-        
+        console.log("🔧 Updating item:", editingItem.id, data);
+
         if (isGoogleCalendarEvent(editingItem.id) && accessToken) {
           await updateCalendarEvent(accessToken, editingItem.id, {
             name: data.name,
@@ -560,7 +619,7 @@ function HabitApp() {
             remindBeforeMinutes: data.remindBeforeMinutes || 0,
             type: data.type || editingItem.type || "event",
             isRecurring: editingItem.isRecurring,
-            recurringType: editingItem.recurringType
+            recurringType: editingItem.recurringType,
           });
 
           setCalendarEvents((prev) =>
@@ -577,7 +636,6 @@ function HabitApp() {
 
         setEditingHabit(null);
         setIsFormOpen(false);
-        
       } catch (error) {
         console.error("❌ Failed to update habit:", error);
         alert(
@@ -597,26 +655,37 @@ function HabitApp() {
     async (habitId: string) => {
       setIsLoading(true);
       try {
-        console.log('🗑️ Deleting item:', habitId);
-        
+        console.log("🗑️ Deleting item:", habitId);
+
         // Handle default time habits (unchanged)
         if (habitId === "wake-time") {
           localStorage.removeItem("wake-time");
-          setDefaultCompleted((prev) => prev.filter((id) => id !== "wake-time"));
+          setDefaultCompleted((prev) =>
+            prev.filter((id) => id !== "wake-time")
+          );
         } else if (habitId === "winddown-time") {
           localStorage.removeItem("winddown-time");
-          setDefaultCompleted((prev) => prev.filter((id) => id !== "winddown-time"));
+          setDefaultCompleted((prev) =>
+            prev.filter((id) => id !== "winddown-time")
+          );
         }
         // Handle Google Calendar events
         else if (isGoogleCalendarEvent(habitId) && accessToken) {
           try {
             await deleteCalendarEvent(accessToken, habitId);
-            setCalendarEvents((prev) => prev.filter((event) => event.id !== habitId));
+            setCalendarEvents((prev) =>
+              prev.filter((event) => event.id !== habitId)
+            );
             console.log("✅ Item deleted from Google Calendar");
           } catch (calendarError) {
-            console.error("❌ Failed to delete from Google Calendar:", calendarError);
+            console.error(
+              "❌ Failed to delete from Google Calendar:",
+              calendarError
+            );
             // Remove from local state even if Google Calendar delete fails
-            setCalendarEvents((prev) => prev.filter((event) => event.id !== habitId));
+            setCalendarEvents((prev) =>
+              prev.filter((event) => event.id !== habitId)
+            );
             alert(
               "Failed to delete from Google Calendar, but removed locally. The item may still appear in your Google Calendar."
             );
@@ -751,7 +820,7 @@ function HabitApp() {
   );
 
   const handleEditHabit = useCallback((habit: Habit) => {
-    console.log('🔧 Opening edit form for:', habit);
+    console.log("🔧 Opening edit form for:", habit);
     const habitWithType = {
       ...habit,
       type: habit.type || (habit.id?.startsWith("gcal-") ? "event" : "habit"),
@@ -762,20 +831,24 @@ function HabitApp() {
 
   const handleFormSubmit = useCallback(
     (data: Omit<Habit, "id" | "completedDates" | "createdAt">) => {
-      console.log('📝 Form submitted:', editingItem ? 'update' : 'create', data);
+      console.log(
+        "📝 Form submitted:",
+        editingItem ? "update" : "create",
+        data
+      );
       editingItem ? updateHabit(data) : addHabit(data);
     },
     [editingItem, updateHabit, addHabit]
   );
 
   const handleCloseForm = useCallback(() => {
-    console.log('❌ Closing form');
+    console.log("❌ Closing form");
     setIsFormOpen(false);
     setEditingHabit(null);
   }, []);
 
   const handleAddHabit = useCallback(() => {
-    console.log('➕ Opening add habit form');
+    console.log("➕ Opening add habit form");
     setEditingHabit(null);
     setIsFormOpen(true);
   }, []);
@@ -799,7 +872,9 @@ function HabitApp() {
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-600"></div>
               <span className="text-gray-600">
-                {accessToken && isCalendarConnected ? "Syncing with Google Calendar..." : "Processing..."}
+                {accessToken && isCalendarConnected
+                  ? "Syncing with Google Calendar..."
+                  : "Processing..."}
               </span>
             </div>
           </div>
