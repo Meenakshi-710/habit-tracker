@@ -1,13 +1,12 @@
 import { Plus, Calendar, Sun, Moon, Check } from "lucide-react";
 
-// At top
 interface HeaderProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onAddHabit: () => void;
   onSelectDate: (date: string | null) => void;
   isCalendarConnected?: boolean;
-  onCalendarConnect?: () => void; // NEW
+  onCalendarConnect?: () => void;
   onCalendarDisconnect: () => void;
   completedCount: number;
   totalHabits: number;
@@ -96,6 +95,37 @@ export default function Header({
     return acc;
   }, {} as Record<string, DayType[]>);
 
+  // Enhanced button handlers with better error handling
+  const handleCalendarToggle = () => {
+    console.log('📅 Calendar button clicked, connected:', isCalendarConnected);
+    
+    try {
+      if (isCalendarConnected) {
+        console.log('🔌 Disconnecting calendar...');
+        onCalendarDisconnect();
+      } else {
+        console.log('🔗 Connecting calendar...');
+        if (onCalendarConnect) {
+          onCalendarConnect();
+        } else {
+          console.warn('⚠️ No calendar connect handler provided');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Calendar toggle error:', error);
+    }
+  };
+
+  const handleAddHabitClick = () => {
+    console.log('➕ Add habit button clicked');
+    
+    try {
+      onAddHabit();
+    } catch (error) {
+      console.error('❌ Add habit error:', error);
+    }
+  };
+
   return (
     <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-blue-50/30 backdrop-blur-xl border-b border-white/20">
       {/* Subtle background pattern */}
@@ -142,46 +172,52 @@ export default function Header({
           </div>
 
           <div className="flex items-center space-x-4">
-            <div
-  className={`group relative overflow-hidden px-4 py-3 rounded-2xl border-2 transition-all duration-300 cursor-pointer ${
-    isCalendarConnected
-      ? "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
-      : "border-gray-200 bg-gray-50/50 hover:bg-gray-50"
-  }`}
-  onClick={isCalendarConnected ? onCalendarDisconnect : onCalendarConnect}
->
-  <div className="flex items-center space-x-3">
-    <div
-      className={`p-1.5 rounded-xl ${
-        isCalendarConnected ? "bg-emerald-100" : "bg-gray-100"
-      }`}
-    >
-      <Calendar
-        size={16}
-        className={
-          isCalendarConnected ? "text-emerald-600" : "text-gray-400"
-        }
-      />
-    </div>
-    <div>
-      <p
-        className={`text-sm font-medium ${
-          isCalendarConnected ? "text-emerald-700" : "text-gray-600"
-        } underline`}
-      >
-        {isCalendarConnected ? "Calendar Synced" : "Sync Calendar"}
-      </p>
-      <p className="text-xs text-gray-400">
-        {isCalendarConnected ? "Click to disconnect" : "Connect to sync"}
-      </p>
-    </div>
-  </div>
-</div>
-
-
+            {/* Enhanced Calendar Button */}
             <button
-              onClick={onAddHabit}
+              onClick={handleCalendarToggle}
+              className={`group relative overflow-hidden px-4 py-3 rounded-2xl border-2 transition-all duration-300 cursor-pointer ${
+                isCalendarConnected
+                  ? "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
+                  : "border-gray-200 bg-gray-50/50 hover:bg-gray-50"
+              }`}
+              title={isCalendarConnected ? "Disconnect Google Calendar" : "Connect Google Calendar"}
+            >
+              <div className="flex items-center space-x-3">
+                <div
+                  className={`p-1.5 rounded-xl transition-colors duration-200 ${
+                    isCalendarConnected ? "bg-emerald-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Calendar
+                    size={16}
+                    className={
+                      isCalendarConnected ? "text-emerald-600" : "text-gray-400"
+                    }
+                  />
+                </div>
+                <div>
+                  <p
+                    className={`text-sm font-medium transition-colors duration-200 ${
+                      isCalendarConnected ? "text-emerald-700" : "text-gray-600"
+                    }`}
+                  >
+                    {isCalendarConnected ? "Calendar Synced" : "Sync Calendar"}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {isCalendarConnected ? "Click to disconnect" : "Connect to sync"}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Hover effect overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+            </button>
+
+            {/* Enhanced Add Button */}
+            <button
+              onClick={handleAddHabitClick}
               className="group relative overflow-hidden bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
+              title="Add new habit, task, or event"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative flex items-center space-x-3">
@@ -189,6 +225,7 @@ export default function Header({
                   <Plus size={18} />
                 </div>
                 <div className="text-left">
+                  <p className="text-sm font-medium">Add New</p>
                   <p className="text-xs text-gray-300">Build something great</p>
                 </div>
               </div>
@@ -226,10 +263,11 @@ export default function Header({
                         onClick={() =>
                           onSelectDate(isSelected ? null : isoDate)
                         }
-                        className="flex flex-col items-center space-y-1 p-2 rounded-2xl min-w-[64px]"
+                        className="flex flex-col items-center space-y-1 p-2 rounded-2xl min-w-[64px] transition-all duration-200 hover:scale-105"
+                        title={`Select ${day.month} ${day.number}`}
                       >
                         <span
-                          className={`text-xs font-semibold ${
+                          className={`text-xs font-semibold transition-colors duration-200 ${
                             isSelected ? "text-pink-600" : "text-gray-500"
                           }`}
                         >
@@ -259,7 +297,7 @@ export default function Header({
           </div>
         </div>
 
-        {/* Progress Section */}
+        {/* Enhanced Progress Section */}
         <div className="bg-white/40 backdrop-blur-sm rounded-3xl p-6 border border-white/30">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -330,6 +368,13 @@ export default function Header({
                       ? "bg-gray-200 text-gray-500 hover:bg-gray-300"
                       : "bg-gray-100"
                   }`}
+                  title={
+                    i < completedCount
+                      ? "Completed"
+                      : i < totalHabits
+                      ? "Pending"
+                      : "No habit"
+                  }
                 >
                   {i < completedCount && <Check className="w-4 h-4" />}
                 </div>
