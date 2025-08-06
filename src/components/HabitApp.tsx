@@ -174,7 +174,10 @@ function HabitApp() {
     }
   }, [calendarEvents]);
 
-  // Fetch Google Calendar events - FIXED to avoid duplicates
+  // Replace the fetchGoogleEvents function in your HabitApp.jsx with this fixed version:
+
+  // Replace the fetchGoogleEvents useEffect in your HabitApp.jsx with this corrected version:
+
   useEffect(() => {
     const fetchGoogleEvents = async () => {
       if (!accessToken) return;
@@ -183,22 +186,32 @@ function HabitApp() {
         setIsLoading(true);
         const events = await getCalendarEvents(accessToken);
 
-        console.log("All events:", events);
-        console.log(
-          "Filtered events (missing 'start'):",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          events.filter((e: any) => !e.start)
-        );
+        console.log("All events from Google Calendar:", events);
 
-        const parsedEvents = events
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .filter((event: any) => event.start)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .map((event: any) => {
+        // GROUP recurring events by their recurringEventId to avoid duplicates
+        const uniqueEvents = new Map();
+
+        // Process events and build unique map
+        events
+          .filter((event: any) => event.start) // Fix TypeScript error by explicitly typing event
+          .forEach((event: any) => {
+            // Fix TypeScript error by explicitly typing event
             const dateTime = event.start.dateTime || event.start.date;
 
+            // For recurring events, use the recurringEventId as the key
+            // For single events, use the event id
+            const uniqueKey = event.recurringEventId || event.id;
+
+            // Skip if we already processed this recurring series
+            if (uniqueEvents.has(uniqueKey)) {
+              console.log(
+                `🔄 Skipping duplicate recurring event: ${event.summary} (${uniqueKey})`
+              );
+              return;
+            }
+
             // Check if this is one of our created habits/tasks/events by looking at the title
-            let type = "event"; // Default type
+            let type: "habit" | "task" | "event" = "event"; // Default type with proper typing
             let cleanName = event.summary || "Untitled Event";
             let isRecurring = false;
             let recurringType: "daily" | "weekly" | "monthly" | undefined =
@@ -214,8 +227,17 @@ function HabitApp() {
               cleanName = event.summary.substring(2).trim(); // Remove emoji and space
             }
 
-            return {
-              id: `gcal-${event.id}`,
+            // For recurring habits, use the FIRST occurrence datetime as the base
+            // This ensures consistent behavior across days
+            let baseDateTime = dateTime;
+            if (event.recurringEventId) {
+              // This is a recurring instance, but we want to use the original series start time
+              // We'll use the current instance time but this represents the series
+              baseDateTime = dateTime;
+            }
+
+            const habitData: Habit = {
+              id: `gcal-${uniqueKey}`, // Use unique key to prevent duplicates
               name: cleanName,
               title: cleanName,
               description: event.description || "",
@@ -231,20 +253,49 @@ function HabitApp() {
                   : type === "task"
                   ? "#f59e0b"
                   : "#3b82f6",
-              dateTime: new Date(dateTime).toISOString(),
+              dateTime: new Date(baseDateTime).toISOString(),
               completedDates: [],
               createdAt: new Date().toISOString(),
-              type: type as "habit" | "task" | "event",
+              type: type,
               remindBeforeMinutes: 0,
               isRecurring,
               recurringType,
             };
+
+            uniqueEvents.set(uniqueKey, habitData);
+            console.log(
+              `✅ Added unique event: ${cleanName} (${uniqueKey}, type: ${type})`
+            );
           });
 
+        // Convert Map values to array (this was the missing step!)
+        const finalEvents = Array.from(uniqueEvents.values());
+
+        // IMPORTANT: Load existing completedDates from localStorage for calendar events
+        const existingCalendarEvents = JSON.parse(
+          localStorage.getItem("calendar-events") || "[]"
+        );
+
+        // Merge completion status from existing data
+        const eventsWithCompletionStatus = finalEvents.map(
+          (newEvent: Habit) => {
+            const existingEvent = existingCalendarEvents.find(
+              (existing: Habit) => existing.id === newEvent.id
+            );
+            if (existingEvent && existingEvent.completedDates) {
+              return {
+                ...newEvent,
+                completedDates: existingEvent.completedDates, // Preserve completion history
+              };
+            }
+            return newEvent;
+          }
+        );
+
         // REPLACE (don't append) calendar events to avoid duplicates
-        setCalendarEvents(parsedEvents);
+        setCalendarEvents(eventsWithCompletionStatus);
         console.log(
-          `✅ Loaded ${parsedEvents.length} events from Google Calendar`
+          `✅ Loaded ${eventsWithCompletionStatus.length} unique events from Google Calendar (${events.length} total events fetched)`
         );
       } catch (err) {
         console.error("Failed to sync Google events:", err);
@@ -363,18 +414,33 @@ function HabitApp() {
     });
   }
 
-  // Fixed allHabits combination - no duplicates
+  // FIXED: Enhanced allHabits combination with better duplicate prevention
   const allHabits = useMemo(() => {
+    console.log("🔄 Recalculating allHabits...");
+    console.log(
+      `📊 Input counts: ${defaultTimeHabits.length} default + ${habits.length} local + ${calendarEvents.length} calendar`
+    );
+
     // Combine all habits but avoid duplicates
     const combined = [...defaultTimeHabits, ...habits, ...calendarEvents];
 
-    // Remove duplicates based on ID
-    const uniqueHabits = combined.filter(
-      (habit, index, self) => index === self.findIndex((h) => h.id === habit.id)
-    );
+    // Remove duplicates based on ID - more robust deduplication
+    const seenIds = new Set<string>();
+    const uniqueHabits = combined.filter((habit) => {
+      if (seenIds.has(habit.id)) {
+        console.log(`🚫 Removing duplicate habit: ${habit.name} (${habit.id})`);
+        return false;
+      }
+      seenIds.add(habit.id);
+      return true;
+    });
 
+    console.log(`📊 Final unique habits: ${uniqueHabits.length}`);
+
+    // Additional debug: log all habit IDs to spot patterns
     console.log(
-      `📊 Total unique habits: ${uniqueHabits.length} (${defaultTimeHabits.length} default + ${habits.length} local + ${calendarEvents.length} calendar)`
+      "📋 All habit IDs:",
+      uniqueHabits.map((h) => `${h.name} (${h.id})`)
     );
 
     return uniqueHabits;
@@ -384,28 +450,56 @@ function HabitApp() {
     ? new Date(selectedDate).toDateString()
     : todayDateString;
 
-  const habitsForSelectedDate = allHabits.filter((habit) => {
-    const habitDate = new Date(habit.dateTime).toDateString();
-    const selectedDateString = selectedDate
-      ? new Date(selectedDate).toDateString()
-      : todayDateString;
+  // FIXED: Better filtering for selected date habits - prevents duplicates
+  const habitsForSelectedDate = useMemo(() => {
+    console.log(`🗓️ Filtering habits for date: ${selectedDateString}`);
+    console.log(`📊 Total allHabits: ${allHabits.length}`);
 
-    // For recurring daily habits, show on every day from the start date onwards
-    if (habit.isRecurring && habit.recurringType === "daily") {
-      const startDate = new Date(habit.dateTime);
-      const checkDate = new Date(selectedDateString);
+    const filtered = allHabits.filter((habit) => {
+      const habitDate = new Date(habit.dateTime).toDateString();
 
-      // Reset times to compare dates only
-      startDate.setHours(0, 0, 0, 0);
-      checkDate.setHours(0, 0, 0, 0);
+      // For recurring daily habits, show on every day from the start date onwards
+      if (habit.isRecurring && habit.recurringType === "daily") {
+        const startDate = new Date(habit.dateTime);
+        const checkDate = new Date(selectedDateString);
 
-      // Only show if the selected date is on or after the habit start date
-      return checkDate >= startDate;
+        // Reset times to compare dates only
+        startDate.setHours(0, 0, 0, 0);
+        checkDate.setHours(0, 0, 0, 0);
+
+        const shouldShow = checkDate >= startDate;
+        console.log(
+          `📅 Recurring habit "${
+            habit.name
+          }": start=${startDate.toDateString()}, check=${checkDate.toDateString()}, show=${shouldShow}`
+        );
+        return shouldShow;
+      }
+
+      // For non-recurring habits, tasks, and events, match exact date
+      const shouldShow = habitDate === selectedDateString;
+      console.log(
+        `📅 Non-recurring "${habit.name}": date=${habitDate}, target=${selectedDateString}, show=${shouldShow}`
+      );
+      return shouldShow;
+    });
+
+    console.log(`📊 Filtered habits count: ${filtered.length}`);
+
+    // Debug: check for any potential duplicates in filtered results
+    const filteredIds = filtered.map((h) => h.id);
+    const duplicateIds = filteredIds.filter(
+      (id, index) => filteredIds.indexOf(id) !== index
+    );
+    if (duplicateIds.length > 0) {
+      console.error(
+        "🚨 DUPLICATE IDS FOUND IN FILTERED RESULTS:",
+        duplicateIds
+      );
     }
 
-    // For non-recurring habits, tasks, and events, match exact date
-    return habitDate === selectedDateString;
-  });
+    return filtered;
+  }, [allHabits, selectedDateString]);
 
   // Calculate completedCount with proper date string format
   const totalHabits = habitsForSelectedDate.length;

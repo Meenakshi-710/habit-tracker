@@ -37,7 +37,6 @@ export default function HabitCard({
   onEdit,
   onDelete,
   selectedDate,
-  allHabits = [], // Default to empty array
 }: HabitCardProps) {
   const targetDateString = selectedDate
     ? new Date(selectedDate).toDateString()
@@ -58,19 +57,23 @@ export default function HabitCard({
 
   // Check if this is part of a 7-day series
   const is7DaySeries = () => {
-    return habit.type === "habit" && habit.id.includes('-20') && habit.id.match(/-\d{4}-\d{2}-\d{2}$/);
+    return (
+      habit.type === "habit" &&
+      habit.id.includes("-20") &&
+      habit.id.match(/-\d{4}-\d{2}-\d{2}$/)
+    );
   };
 
   // Helper function to get appropriate delete confirmation message
   const getDeleteConfirmationMessage = (habit: Habit) => {
     const isGoogleCalendarEvent = habit.id?.startsWith("gcal-");
-    const is7DaySeries = habit.type === "habit" && (
-      (habit.id.includes('-20') && habit.id.match(/-\d{4}-\d{2}-\d{2}$/)) || // Local 7-day series
-      isGoogleCalendarEvent // Google Calendar habits are always treated as series
-    );
-    
+    const is7DaySeries =
+      habit.type === "habit" &&
+      ((habit.id.includes("-20") && habit.id.match(/-\d{4}-\d{2}-\d{2}$/)) || // Local 7-day series
+        isGoogleCalendarEvent); // Google Calendar habits are always treated as series
+
     if (isGoogleCalendarEvent) {
-      if (habit.type === 'habit') {
+      if (habit.type === "habit") {
         return "This will delete the entire habit series from both your habit tracker and Google Calendar. Are you sure?";
       } else {
         return "This will delete the event from both your habit tracker and Google Calendar. Are you sure?";
@@ -93,71 +96,97 @@ export default function HabitCard({
     Calendar: <Calendar className="text-blue-600" />,
     Other: <FaStar className="text-gray-500" />,
   };
-  
-  // Simplified and more reliable streak calculation
+
+  // FIXED: Streak calculation for single-habit-per-recurring-pattern model
   const getStreakCount = () => {
     // Only show streaks for habits (not events, tasks, or default time habits)
     if (habit.type !== "habit" || isDefaultTimeHabit) {
+      console.log(
+        `⚠️ Skipping streak for ${habit.name}: type=${habit.type}, isDefaultTime=${isDefaultTimeHabit}`
+      );
       return 0;
     }
+
+    console.log(`\n🔍 === STREAK CALCULATION START ===`);
+    console.log(`Current habit: ${habit.name} (${habit.id})`);
+    console.log(`Current habit completedDates:`, habit.completedDates);
+    console.log(`Selected date: ${selectedDate || "today"}`);
+    console.log(`Target date string: ${targetDateString}`);
+    console.log(`Is current habit completed: ${isCompleted}`);
 
     // If current habit is not completed, streak is 0
     if (!isCompleted) {
-      console.log("❌ Current habit not completed, streak = 0");
+      console.log(
+        `❌ Current habit not completed on ${targetDateString}, streak = 0`
+      );
       return 0;
     }
 
-    console.log(`🔍 Calculating streak for habit: ${habit.name} (${habit.id})`);
-    
-    // Get the base name for comparison (remove emoji prefixes from Google Calendar)
-    const getCleanName = (name: string) => name.replace(/^🎯\s*/, '').toLowerCase().trim();
-    const currentHabitName = getCleanName(habit.name);
-    
-    // Find all habits with the same name (for Google Calendar) or base ID (for local habits)
-    const relatedHabits = allHabits.filter(h => {
-      if (h.type !== 'habit') return false;
-      
-      // Compare by clean name for all habits (works for both local and Google Calendar)
-      const relatedName = getCleanName(h.name);
-      return relatedName === currentHabitName;
-    });
-
-    console.log(`🔗 Found ${relatedHabits.length} habits with name "${currentHabitName}"`);
-    relatedHabits.forEach(h => {
-      console.log(`  - ${h.name} (${h.id}) - ${new Date(h.dateTime).toDateString()} - Completed: ${h.completedDates.length} days`);
-    });
-
-    // Calculate streak by checking consecutive days backwards from current date
+    // For your model, we need to check the completedDates array of the current habit
+    // and count consecutive days backwards from the selected date
     let streak = 0;
     const checkDate = selectedDate ? new Date(selectedDate) : new Date();
     checkDate.setHours(0, 0, 0, 0);
-    
-    for (let daysBack = 0; daysBack < 365; daysBack++) { // Check up to 1 year
+
+    console.log(
+      `\n📅 CHECKING STREAK BACKWARDS FROM: ${checkDate.toDateString()}`
+    );
+
+    // Sort completed dates for easier processing
+    const sortedCompletedDates = [...habit.completedDates]
+      .map((dateStr) => new Date(dateStr))
+      .sort((a, b) => b.getTime() - a.getTime()); // Most recent first
+
+    console.log(
+      `📋 Sorted completed dates:`,
+      sortedCompletedDates.map((d) => d.toDateString())
+    );
+
+    for (let daysBack = 0; daysBack < 365; daysBack++) {
+      // Check up to 1 year
       const currentCheckDate = new Date(checkDate);
       currentCheckDate.setDate(currentCheckDate.getDate() - daysBack);
       const checkDateString = currentCheckDate.toDateString();
-      
-      // Find if any habit exists for this date and is completed
-      const habitForThisDate = relatedHabits.find(h => {
-        const habitDate = new Date(h.dateTime);
-        return habitDate.toDateString() === checkDateString;
-      });
-      
-      if (habitForThisDate && habitForThisDate.completedDates.includes(checkDateString)) {
+
+      console.log(`\n  Day -${daysBack}: Checking ${checkDateString}`);
+
+      // Check if this date is in the completed dates
+      const isDateCompleted = habit.completedDates.includes(checkDateString);
+      console.log(`    Is ${checkDateString} completed: ${isDateCompleted}`);
+
+      if (isDateCompleted) {
         streak++;
-        console.log(`✅ Day ${daysBack}: ${checkDateString} - Found completed habit: ${habitForThisDate.name}`);
+        console.log(
+          `    ✅ Day ${daysBack}: COMPLETED - Streak now: ${streak}`
+        );
       } else {
+        // For recurring daily habits, we need to check if this date is valid for the habit
+        // (i.e., on or after the habit start date)
+        const habitStartDate = new Date(habit.dateTime);
+        habitStartDate.setHours(0, 0, 0, 0);
+        const currentCheckDateOnly = new Date(currentCheckDate);
+        currentCheckDateOnly.setHours(0, 0, 0, 0);
+
+        // If the check date is before the habit start date, we can continue the streak
+        if (currentCheckDateOnly < habitStartDate) {
+          console.log(
+            `    ⏩ Day ${daysBack}: Before habit start date, continuing...`
+          );
+          continue;
+        }
+
+        // If this is a valid habit date but not completed, break the streak
         if (daysBack === 0) {
-          // If today/selected date is not completed, no streak
-          console.log(`❌ Current date ${checkDateString} not completed, no streak`);
+          console.log(`    ❌ Current date not completed, no streak`);
           return 0;
         } else {
-          // Break streak on first non-completed day
-          console.log(`❌ Day ${daysBack}: ${checkDateString} - No completed habit found, breaking streak`);
+          console.log(
+            `    ❌ Day ${daysBack}: NOT COMPLETED - Breaking streak at ${streak} days`
+          );
           break;
         }
       }
-      
+
       // Safety limit
       if (streak >= 100) {
         console.log("⚠️ Streak limit reached (100 days)");
@@ -165,7 +194,8 @@ export default function HabitCard({
       }
     }
 
-    console.log(`🎯 Final streak: ${streak} days`);
+    console.log(`\n🎯 FINAL STREAK: ${streak} days`);
+    console.log(`=== STREAK CALCULATION END ===\n`);
     return streak;
   };
 
@@ -357,12 +387,12 @@ export default function HabitCard({
               <span className="text-gray-500 font-medium">
                 {habit.category}
               </span>
-              {/* Show streak for both completed habits and Google Calendar synced habits */}
+              {/* Show streak for completed habits */}
               {isCompleted && habit.type === "habit" && streak > 0 && (
                 <div className="flex items-center space-x-1 text-orange-600">
                   <TrendingUp size={14} />
                   <span className="font-semibold">
-                    {streak} day{streak > 1 ? 's' : ''} streak
+                    {streak} day{streak > 1 ? "s" : ""} streak
                   </span>
                 </div>
               )}
