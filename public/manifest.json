@@ -1,7 +1,7 @@
 {
-  "name": "Habit extension",
-  "description": "Track habits daily!",
-  "version": "0.0.1",
+  "name": "Habit Tracker - Daily Progress",
+  "description": "Track habits, tasks, and events with Google Calendar sync. Build streaks and achieve your goals!",
+  "version": "1.0.0",
   "manifest_version": 3,
   "icons": {
     "16": "logo.png",
@@ -9,26 +9,51 @@
     "128": "logo.png"
   },
   "action": {
+    "default_popup": "pin.html",
     "default_icon": {
       "16": "logo.png",
       "48": "logo.png",
       "128": "logo.png"
-    }
+    },
+    "default_title": "Open Habit Tracker"
   },
   "permissions": [
     "storage",
     "tabs",
     "notifications",
-    "alarms"
+    "alarms",
+    "identity",
+    "activeTab"
   ],
+  "oauth2": {
+    "client_id": "424581927926-c3v0f2n25upi474dl0lejm5hj5mbvdq2.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/calendar.events"
+    ]
+  },
   "background": {
     "service_worker": "background.js"
   },
+  "host_permissions": [
+    "https://www.googleapis.com/*",
+    "https://accounts.google.com/*"
+  ],
   "web_accessible_resources": [
     {
-      "resources": ["logo.png"],
+      "resources": [
+        "logo.png", 
+        "index.html", 
+        "pin.html", 
+        "pin.js",
+        "assets/",
+        "src/"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "homepage_url": "https://timeless.co"
 }

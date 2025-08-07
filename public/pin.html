@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Habit Tracker - Pin Bar</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Glassmorphism background */
+    .container {
+      height: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      position: relative;
+    }
+
+    /* Subtle animated background pattern */
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+      animation: float 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-5px) rotate(1deg); }
+    }
+
+    /* Progress Section */
+    .progress-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .progress-ring {
+      width: 32px;
+      height: 32px;
+      position: relative;
+    }
+
+    .progress-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .progress-ring-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.2);
+      stroke-width: 3;
+    }
+
+    .progress-ring-fill {
+      fill: none;
+      stroke: #10b981;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 88;
+      stroke-dashoffset: 88;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .progress-text {
+      font-size: 11px;
+      font-weight: 600;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .time-text {
+      font-size: 10px;
+      opacity: 0.8;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Action Buttons */
+    .actions {
+      display: flex;
+      gap: 6px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ec4899, #be185d);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #f472b6, #ec4899);
+      box-shadow: 0 4px 16px rgba(236, 72, 153, 0.4);
+    }
+
+    /* Status dot */
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      margin-bottom: 4px;
+      backdrop-filter: blur(10px);
+    }
+
+    .btn:hover .tooltip {
+      opacity: 1;
+    }
+
+    /* Loading state */
+    .loading {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 350px) {
+      .container {
+        padding: 6px 8px;
+      }
+      
+      .btn {
+        padding: 4px 6px;
+        font-size: 10px;
+      }
+      
+      .actions {
+        gap: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Progress Section -->
+    <div class="progress-section">
+      <div class="progress-ring">
+        <svg>
+          <circle class="progress-ring-bg" cx="16" cy="16" r="14"></circle>
+          <circle class="progress-ring-fill" cx="16" cy="16" r="14" id="progress-circle"></circle>
+        </svg>
+      </div>
+      <div>
+        <div class="progress-text" id="progress-text">0/0</div>
+        <div class="time-text" id="time-text">--:--</div>
+      </div>
+      <div class="status-dot" id="status-dot"></div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <button class="btn btn-primary" id="open-dashboard" title="Open Dashboard">
+        <span>🏠</span>
+        <span>Dashboard</span>
+        <div class="tooltip">Open main dashboard</div>
+      </button>
+      
+      <button class="btn" id="add-habit" title="Quick Add">
+  <span>➕</span>
+  <span>Add</span>
+  <div class="tooltip">Quick add habit</div>
+</button>
+      
+      <button class="btn" id="sync-calendar" title="Sync Calendar">
+        <span id="sync-icon">📅</span>
+        <span id="sync-text">Sync</span>
+        <div class="tooltip">Sync with Google Calendar</div>
+      </button>
+    </div>
+  </div>
+
+  <script src="pin.js" type="module"></script>
+</body>
+</html>

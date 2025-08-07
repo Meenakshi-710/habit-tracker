@@ -279,7 +279,7 @@ export default function Header({
                       day.isToday
                         ? "bg-gradient-to-br from-gray-900 to-gray-700 text-white shadow-lg scale-110"
                         : isSelected
-                        ? "bg-pink-100 text-pink-600 shadow-md scale-105"
+                        ? "bg-pink-100 text-pink-600 shadow-md scale-105 border-2 border-pink-600"
                         : "text-gray-600 hover:bg-white hover:shadow-md hover:scale-105"
                     }`}
                         >

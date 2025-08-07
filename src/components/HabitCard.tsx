@@ -20,6 +20,9 @@ import {
   FaPaintBrush,
   FaMoneyBillWave,
   FaStar,
+  FaHeart,
+  FaTasks,
+  FaCalendarAlt,
 } from "react-icons/fa";
 
 interface HabitCardProps {
@@ -226,50 +229,62 @@ export default function HabitCard({
       return <Calendar size={16} className="text-blue-600" />;
     }
 
-    if (isEvent) {
-      return <Calendar size={16} className="text-green-600" />;
-    }
-
     return (
-      categoryIcons[habit.category] || <FaStar className="text-gray-500" />
+      categoryIcons[habit.category] || <FaStar className="text-pink-600" />
     );
   };
 
+  // Get type label and icon
+  const getTypeInfo = () => {
+    const type = habit.type || "habit";
+    const isSynced = isGoogleCalendarEvent;
+
+    const typeConfig = {
+      habit: {
+        label: "Habit",
+        icon: <FaHeart size={12} />,
+      },
+      task: {
+        label: "Task",
+        icon: <FaTasks size={12} />,
+      },
+      event: {
+        label: "Event",
+        icon: <FaCalendarAlt size={12} />,
+      },
+    };
+
+    const base = typeConfig[type] || typeConfig.habit;
+
+    return {
+      ...base,
+      color: isSynced
+        ? "bg-blue-100 text-blue-700 border border-blue-200"
+        : "bg-pink-100 text-pink-700 border border-pink-200",
+    };
+  };
+
   const getCardStyle = () => {
-    if (isGoogleCalendarEvent) {
-      return isCompleted
+    return isGoogleCalendarEvent
+      ? isCompleted
         ? "border-blue-200 bg-gradient-to-r from-blue-50/50 to-sky-50/30 shadow-sm"
-        : "border-blue-200/80 hover:border-blue-300/80 shadow-sm hover:bg-blue-50/20";
-    }
-
-    if (isEvent) {
-      return isCompleted
-        ? "border-green-200 bg-gradient-to-r from-green-50/50 to-emerald-50/30 shadow-sm"
-        : "border-green-200/80 hover:border-green-300/80 shadow-sm hover:bg-green-50/20";
-    }
-
-    return isCompleted
-      ? "border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/30 shadow-sm"
-      : "border-gray-200/80 hover:border-gray-300/80 shadow-sm hover:bg-white";
+        : "border-blue-200/80 hover:border-blue-300/80 shadow-sm hover:bg-blue-50/20"
+      : isCompleted
+      ? "border-pink-200 bg-gradient-to-r from-pink-50/50 to-rose-50/30 shadow-sm"
+      : "border-gray-200/80 hover:border-pink-300/80 shadow-sm hover:bg-white";
   };
 
   const getButtonStyle = () => {
-    if (isGoogleCalendarEvent) {
-      return isCompleted
+    return isGoogleCalendarEvent
+      ? isCompleted
         ? "bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 border-blue-700 text-white shadow-lg"
-        : "border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-400 hover:text-blue-600";
-    }
-
-    if (isEvent) {
-      return isCompleted
-        ? "bg-gradient-to-br from-green-500 via-green-600 to-green-700 border-green-700 text-white shadow-lg"
-        : "border-gray-300 hover:border-green-400 hover:bg-green-50 text-gray-400 hover:text-green-600";
-    }
-
-    return isCompleted
+        : "border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-400 hover:text-blue-600"
+      : isCompleted
       ? "bg-gradient-to-br from-pink-500 via-pink-600 to-pink-700 border-pink-700 text-white shadow-lg"
       : "border-gray-300 hover:border-pink-400 hover:bg-pink-50 text-gray-400 hover:text-pink-600";
   };
+
+  const typeInfo = getTypeInfo();
 
   return (
     <div
@@ -281,26 +296,10 @@ export default function HabitCard({
           isCompleted
             ? isGoogleCalendarEvent
               ? "bg-blue-500 shadow-lg"
-              : isEvent
-              ? "bg-green-500 shadow-lg"
-              : "bg-emerald-500 shadow-lg"
+              : "bg-pink-500 shadow-lg"
             : "bg-gray-300"
         }`}
-      ></div>
-
-      {/* Google Calendar badge */}
-      {isGoogleCalendarEvent && (
-        <div className="absolute top-2 right-2 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-medium">
-          Google Calendar
-        </div>
-      )}
-
-      {/* 7-Day Series Badge for recurring habits */}
-      {is7DaySeries() && (
-        <div className="absolute top-2 right-2 bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-medium">
-          7-Day Series
-        </div>
-      )}
+      />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left: Check + Info */}
@@ -348,13 +347,9 @@ export default function HabitCard({
                   isCompleted
                     ? isGoogleCalendarEvent
                       ? "text-blue-600 line-through opacity-75"
-                      : isEvent
-                      ? "text-green-600 line-through opacity-75"
                       : "text-pink-600 line-through opacity-75"
                     : isGoogleCalendarEvent
                     ? "text-blue-800 group-hover:text-blue-800"
-                    : isEvent
-                    ? "text-green-800 group-hover:text-green-800"
                     : "text-pink-800 group-hover:text-pink-800"
                 }`}
               >
@@ -367,34 +362,65 @@ export default function HabitCard({
                 <Sparkles
                   size={14}
                   className={`animate-pulse ${
-                    isGoogleCalendarEvent
-                      ? "text-blue-500"
-                      : isEvent
-                      ? "text-green-500"
-                      : "text-emerald-500"
+                    isGoogleCalendarEvent ? "text-blue-500" : "text-pink-500"
                   }`}
                 />
               )}
             </div>
 
+            {/* Type Label */}
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}
+              >
+                {typeInfo.icon}
+                {typeInfo.label}
+              </span>
+
+              {/* Google Calendar badge */}
+              {isGoogleCalendarEvent && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">
+                  <Calendar size={10} />
+                  Synced
+                </span>
+              )}
+
+              {/* 7-Day Series Badge for recurring habits */}
+              {is7DaySeries() && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                  7-Day Series
+                </span>
+              )}
+            </div>
+
             {/* Time display */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mb-1">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mb-2">
               <Clock size={14} />
               <span>{formatTime(habit.dateTime)}</span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
-              <span className="text-gray-500 font-medium">
-                {habit.category}
-              </span>
-              {/* Show streak for completed habits */}
-              {isCompleted && habit.type === "habit" && streak > 0 && (
-                <div className="flex items-center space-x-1 text-orange-600">
-                  <TrendingUp size={14} />
-                  <span className="font-semibold">
-                    {streak} day{streak > 1 ? "s" : ""} streak
+            {/* Category for habits OR Description for tasks/events */}
+            <div className="mb-2">
+              {habit.type === "habit" || isDefaultTimeHabit ? (
+                <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+                  <span className="text-gray-500 font-medium">
+                    {habit.category}
                   </span>
+                  {/* Show streak for completed habits */}
+                  {isCompleted && habit.type === "habit" && streak > 0 && (
+                    <div className="flex items-center space-x-1 text-orange-600">
+                      <TrendingUp size={14} />
+                      <span className="font-semibold">
+                        {streak} day{streak > 1 ? "s" : ""} streak
+                      </span>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                // Show description for tasks and events
+                habit.description && (
+                  <p className="mt-1 leading-relaxed">{habit.description}</p>
+                )
               )}
             </div>
           </div>

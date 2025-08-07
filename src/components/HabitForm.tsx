@@ -14,6 +14,7 @@ import {
   FaCalendarAlt,
   FaHeart,
 } from "react-icons/fa";
+import { FiClock } from "react-icons/fi";
 
 interface FormProps {
   isOpen: boolean;
@@ -23,7 +24,7 @@ interface FormProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editingItem?: any | null;
   initialDate?: string | null;
-  defaultTab?: string; 
+  defaultTab?: string;
 }
 
 const categories = [
@@ -169,7 +170,10 @@ export default function EnhancedForm({
   };
 
   // Function to check if selected time has passed and adjust if necessary
-  const checkAndAdjustDateTime = (selectedDate: string, selectedTime: string) => {
+  const checkAndAdjustDateTime = (
+    selectedDate: string,
+    selectedTime: string
+  ) => {
     if (!selectedDate || !selectedTime) {
       setShowTimeWarning(false);
       setAdjustedDateTime(null);
@@ -178,21 +182,21 @@ export default function EnhancedForm({
 
     const now = new Date();
     const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
-    
+
     // Only check if the selected date is today
     const today = new Date().toISOString().split("T")[0];
     if (selectedDate === today && selectedDateTime <= now) {
       // Time has passed, schedule for next day
       const nextDay = new Date(selectedDateTime);
       nextDay.setDate(nextDay.getDate() + 1);
-      
+
       setShowTimeWarning(true);
       setAdjustedDateTime(nextDay);
-      
-      console.log('⏰ Time adjustment:', {
+
+      console.log("⏰ Time adjustment:", {
         original: selectedDateTime.toLocaleString(),
         adjusted: nextDay.toLocaleString(),
-        reason: 'Selected time has passed'
+        reason: "Selected time has passed",
       });
     } else {
       setShowTimeWarning(false);
@@ -210,7 +214,7 @@ export default function EnhancedForm({
       const today = new Date().toISOString().split("T")[0];
 
       if (editingItem) {
-        console.log('🔧 Editing item in form:', editingItem);
+        console.log("🔧 Editing item in form:", editingItem);
         setTitle(editingItem.name || editingItem.title || "");
         setDescription(editingItem.description || "");
         setCategory(editingItem.category || categories[0].name);
@@ -262,22 +266,22 @@ export default function EnhancedForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 Form submitting with:', {
+    console.log("🚀 Form submitting with:", {
       activeTab,
       title: title.trim(),
       description: description.trim(),
       date,
       time,
       showTimeWarning,
-      adjustedDateTime
+      adjustedDateTime,
     });
 
     if (title.trim() && date && time) {
       // Use adjusted date time if available, otherwise use selected date/time
-      const finalDateTime = adjustedDateTime 
+      const finalDateTime = adjustedDateTime
         ? adjustedDateTime.toISOString()
         : createDateTime(date, time);
-      
+
       const itemData = {
         type: activeTab, // This should be "habit", "task", or "event"
         name: title.trim(),
@@ -287,21 +291,21 @@ export default function EnhancedForm({
         remindBeforeMinutes: remindBefore,
         ...(activeTab === "habit" && { category, color }),
       };
-      
-      console.log('📤 Submitting item data with final dateTime:', {
+
+      console.log("📤 Submitting item data with final dateTime:", {
         ...itemData,
         originalDateTime: createDateTime(date, time),
         finalDateTime,
-        wasAdjusted: !!adjustedDateTime
+        wasAdjusted: !!adjustedDateTime,
       });
-      
+
       onSubmit(itemData);
       onClose();
     } else {
-      console.warn('⚠️ Form validation failed:', {
+      console.warn("⚠️ Form validation failed:", {
         title: title.trim(),
         date,
-        time
+        time,
       });
     }
   };
@@ -394,7 +398,7 @@ export default function EnhancedForm({
               <button
                 key={tab.id}
                 onClick={() => {
-                  console.log('🔄 Form tab changed to:', tab.id);
+                  console.log("🔄 Form tab changed to:", tab.id);
                   setActiveTab(tab.id);
                 }}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -570,32 +574,26 @@ export default function EnhancedForm({
                       {
                         value: 0,
                         label: `At time of ${activeTab}`,
-                        icon: "🕐",
                       },
                       {
                         value: 5,
                         label: "5 minutes before",
-                        icon: "⏰",
                       },
                       {
                         value: 10,
                         label: "10 minutes before",
-                        icon: "⏰",
                       },
                       {
                         value: 15,
                         label: "15 minutes before",
-                        icon: "⏰",
                       },
                       {
                         value: 30,
                         label: "30 minutes before",
-                        icon: "⏰",
                       },
                       {
                         value: 60,
                         label: "1 hour before",
-                        icon: "⏰",
                       },
                     ].map((option) => (
                       <button
@@ -608,7 +606,9 @@ export default function EnhancedForm({
                             : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                         }`}
                       >
-                        <span className="text-xl">{option.icon}</span>
+                        <span className="text-xl">
+                          <FiClock />
+                        </span>
                         <div className="flex-1">
                           <div className="font-medium">{option.label}</div>
                           {option.value > 0 && (
@@ -639,14 +639,18 @@ export default function EnhancedForm({
 
           {/* Final Schedule Display */}
           {date && time && (
-            <div className={`border rounded-xl p-4 ${
-              showTimeWarning 
-                ? "bg-blue-50 border-blue-200" 
-                : "bg-blue-50 border-blue-200"
-            }`}>
+            <div
+              className={`border rounded-xl p-4 ${
+                showTimeWarning
+                  ? "bg-blue-50 border-blue-200"
+                  : "bg-blue-50 border-blue-200"
+              }`}
+            >
               <p className="text-sm text-pink-600">
                 <strong>Scheduled for:</strong>{" "}
-                {(adjustedDateTime || new Date(createDateTime(date, time))).toLocaleString("en-IN", {
+                {(
+                  adjustedDateTime || new Date(createDateTime(date, time))
+                ).toLocaleString("en-IN", {
                   timeZone: "Asia/Kolkata",
                   dateStyle: "full",
                   timeStyle: "short",
@@ -659,7 +663,8 @@ export default function EnhancedForm({
               )}
               {showTimeWarning && (
                 <p className="text-sm text-black mt-1">
-                  <strong>Note:</strong> Scheduled for the next day due to past time.
+                  <strong>Note:</strong> Scheduled for the next day due to past
+                  time.
                 </p>
               )}
             </div>
