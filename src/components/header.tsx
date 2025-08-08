@@ -52,21 +52,14 @@ export default function Header({
     isFirstOfMonth: boolean;
   };
 
-  const getDaysFromMondayToYearEnd = (): DayType[] => {
+  const getDaysFromTodayToYearEnd = (): DayType[] => {
     const days: DayType[] = [];
 
-    // Get current date
+    // Start from current date
     const today = new Date();
-
-    // Get Monday of the current week
-    const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
-    const daysSinceMonday = (dayOfWeek + 6) % 7; // makes Monday = 0, Sunday = 6
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - daysSinceMonday);
-
     const endOfYear = new Date(today.getFullYear(), 11, 31);
 
-    const date = new Date(startOfWeek);
+    const date = new Date(today);
     while (date <= endOfYear) {
       days.push({
         date: new Date(date),
@@ -83,7 +76,7 @@ export default function Header({
     return days;
   };
 
-  const allDays = getDaysFromMondayToYearEnd();
+  const allDays = getDaysFromTodayToYearEnd();
 
   // Group days by month for rendering
   const groupedDays = allDays.reduce((acc, day) => {
