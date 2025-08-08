@@ -1,4 +1,4 @@
-// Enhanced Google Calendar integration with CRUD operations, yearly recurring habits, and auto next-day scheduling
+// Enhanced Google Calendar integration with proper OAuth popup handling
 // Fixed OAuth redirect URI handling for production deployments
 
 const CLIENT_ID = "424581927926-c3v0f2n25upi474dl0lejm5hj5mbvdq2.apps.googleusercontent.com";
@@ -14,19 +14,9 @@ const getRedirectURI = () => {
     return chrome.identity.getRedirectURL("oauth2");
   }
   
-  // Handle different deployment environments
+  // For web applications, we need a dedicated OAuth callback page
   const currentOrigin = window.location.origin;
-  
-  // For development environments
-  if (currentOrigin.includes('localhost') || 
-      currentOrigin.includes('127.0.0.1') || 
-      currentOrigin.includes('192.168.')) {
-    return currentOrigin;
-  }
-  
-  // For production environments (Vercel, Netlify, etc.)
-  // This should match exactly what you configure in Google Cloud Console
-  return currentOrigin;
+  return `${currentOrigin}/oauth-callback.html`;
 };
 
 const REDIRECT_URI = getRedirectURI();
@@ -114,7 +104,7 @@ export const testOAuthConfig = () => {
   
   if (!isValidRedirectURI) {
     console.warn("⚠️ Warning: Redirect URI might not be properly configured");
-    console.warn("Expected format: https://yourdomain.com or http://localhost:port");
+    console.warn("Expected format: https://yourdomain.com/oauth-callback.html or http://localhost:port/oauth-callback.html");
   }
   
   // Check if running in production
@@ -122,8 +112,9 @@ export const testOAuthConfig = () => {
   console.log("- Production environment:", isProduction);
   
   if (isProduction) {
-    console.log("🚀 Production detected. Make sure this URL is added to Google Cloud Console:");
+    console.log("🚀 Production detected. Make sure these URLs are added to Google Cloud Console:");
     console.log(`   ${REDIRECT_URI}`);
+    console.log(`   ${window.location.origin}/oauth-callback.html`);
   }
   
   return {
@@ -176,12 +167,15 @@ export const getAuthTokenFromExtension = (): Promise<string> => {
 };
 
 /**
- * Enhanced OAuth flow for web with better error handling, CORS support, and production compatibility
+ * Enhanced OAuth flow for web with proper popup handling and callback page
  */
 export const getAuthTokenFromWeb = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     // Add state parameter for security (CSRF protection)
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    // Store state in sessionStorage to verify later
+    sessionStorage.setItem('oauth_state', state);
     
     const authUrl =
       `https://accounts.google.com/o/oauth2/v2/auth` +
@@ -215,124 +209,78 @@ export const getAuthTokenFromWeb = (): Promise<string> => {
       return;
     }
 
-    let pollCount = 0;
-    const maxPolls = 300; // 150 seconds max wait time
     let hasResolved = false;
 
-    const poll = setInterval(() => {
-      pollCount++;
-      
-      try {
-        // Check if popup was closed by user
-        if (!popup || popup.closed) {
-          if (!hasResolved) {
-            clearInterval(poll);
-            console.log("❌ OAuth popup was closed by user");
-            reject(new Error("OAuth popup was closed before authentication completed"));
-          }
-          return;
-        }
-
-        // Check for timeout
-        if (pollCount > maxPolls) {
-          clearInterval(poll);
-          popup.close();
-          if (!hasResolved) {
-            console.log("❌ OAuth flow timed out");
-            reject(new Error("OAuth flow timed out after 150 seconds"));
-          }
-          return;
-        }
-
-        // Try to read the popup URL (this will fail due to CORS until we're redirected back)
-        let currentUrl: string;
-        try {
-          currentUrl = popup.location.href;
-        } catch (e) {
-          // Expected cross-origin error while popup is on Google's domain
-          return;
-        }
-
-        // If we can read the URL, we've been redirected back to our domain
-        console.log("🔄 Redirected back to:", currentUrl);
-
-        if (currentUrl && currentUrl.startsWith(REDIRECT_URI)) {
-          const url = new URL(currentUrl);
-          const hash = url.hash;
-          
-          if (hash && hash.includes("access_token")) {
-            const params = new URLSearchParams(hash.substring(1));
-            const token = params.get("access_token");
-            const returnedState = params.get("state");
-            const error = params.get("error");
-            const errorDescription = params.get("error_description");
-            
-            clearInterval(poll);
-            popup.close();
-            hasResolved = true;
-            
-            if (error) {
-              console.error("❌ OAuth error:", error, errorDescription);
-              reject(new Error(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`));
-            } else if (returnedState !== state) {
-              console.error("❌ State parameter mismatch - possible CSRF attack");
-              reject(new Error("Invalid state parameter - possible CSRF attack"));
-            } else if (token) {
-              console.log("✅ Web OAuth successful - token received");
-              resolve(token);
-            } else {
-              console.error("❌ No access token found in redirect");
-              reject(new Error("No access token found in redirect URL"));
-            }
-          } else if (hash && hash.includes("error")) {
-            // Handle error in hash
-            const params = new URLSearchParams(hash.substring(1));
-            const error = params.get("error");
-            const errorDescription = params.get("error_description");
-            
-            clearInterval(poll);
-            popup.close();
-            hasResolved = true;
-            
-            console.error("❌ OAuth error in hash:", error, errorDescription);
-            reject(new Error(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`));
-          }
-        }
-      } catch (err) {
-        // Ignore expected cross-origin errors while waiting
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        if (!errorMessage.toLowerCase().includes('cross-origin') && 
-            !errorMessage.toLowerCase().includes('blocked a frame')) {
-          console.warn("OAuth polling error:", err);
-        }
+    // Listen for messages from the popup (callback page will send the token)
+    const messageListener = (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        console.warn("Received message from unexpected origin:", event.origin);
+        return;
       }
-    }, 500);
 
-    // Additional cleanup - handle popup focus/blur events
-    const handlePopupClosed = () => {
-      setTimeout(() => {
-        try {
-          if (popup && popup.closed && !hasResolved) {
-            clearInterval(poll);
-            console.log("❌ OAuth popup was closed during authentication");
-            reject(new Error("OAuth popup was closed during authentication"));
-          }
-        } catch (e) {
-          // Ignore errors checking popup status
+      console.log("📨 Received message from popup:", event.data);
+
+      if (event.data.type === 'OAUTH_SUCCESS') {
+        const { token, returnedState } = event.data;
+        const storedState = sessionStorage.getItem('oauth_state');
+        
+        if (returnedState !== storedState) {
+          console.error("❌ State parameter mismatch - possible CSRF attack");
+          cleanup();
+          reject(new Error("Invalid state parameter - possible CSRF attack"));
+          return;
         }
-      }, 1000);
+
+        if (token) {
+          console.log("✅ Web OAuth successful - token received via message");
+          cleanup();
+          resolve(token);
+        } else {
+          cleanup();
+          reject(new Error("No access token found in message"));
+        }
+      } else if (event.data.type === 'OAUTH_ERROR') {
+        console.error("❌ OAuth error from popup:", event.data.error);
+        cleanup();
+        reject(new Error(`OAuth error: ${event.data.error}`));
+      }
     };
 
-    // Check if popup was blocked initially
-    setTimeout(() => {
-      try {
-        if (!popup || popup.closed) {
-          handlePopupClosed();
+    // Cleanup function
+    const cleanup = () => {
+      if (!hasResolved) {
+        hasResolved = true;
+        window.removeEventListener('message', messageListener);
+        sessionStorage.removeItem('oauth_state');
+        if (popup && !popup.closed) {
+          popup.close();
         }
-      } catch (e) {
-        // Ignore errors
       }
-    }, 100);
+    };
+
+    // Listen for messages from the callback page
+    window.addEventListener('message', messageListener);
+
+    // Check if popup is closed manually
+    const pollForClosure = setInterval(() => {
+      if (popup.closed && !hasResolved) {
+        clearInterval(pollForClosure);
+        console.log("❌ OAuth popup was closed by user");
+        cleanup();
+        reject(new Error("OAuth popup was closed before authentication completed"));
+      }
+    }, 1000);
+
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      if (!hasResolved) {
+        clearInterval(pollForClosure);
+        console.log("❌ OAuth flow timed out");
+        cleanup();
+        reject(new Error("OAuth flow timed out after 5 minutes"));
+      }
+    }, 300000); // 5 minutes
   });
 };
 
