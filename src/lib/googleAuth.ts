@@ -1,4 +1,6 @@
 // Enhanced Google Calendar integration with CRUD operations, yearly recurring habits, and auto next-day scheduling
+// Fixed OAuth redirect URI handling for production deployments
+
 const CLIENT_ID = "424581927926-c3v0f2n25upi474dl0lejm5hj5mbvdq2.apps.googleusercontent.com";
 
 // Updated scopes to include write permissions
@@ -6,11 +8,36 @@ const SCOPES = "https://www.googleapis.com/auth/calendar";
 
 const isChromeExtension = typeof chrome !== "undefined" && chrome.identity;
 
-const REDIRECT_URI = isChromeExtension
-  ? chrome.identity.getRedirectURL("oauth2")
-  : window.location.origin;
+// Environment-aware redirect URI configuration
+const getRedirectURI = () => {
+  if (isChromeExtension) {
+    return chrome.identity.getRedirectURL("oauth2");
+  }
+  
+  // Handle different deployment environments
+  const currentOrigin = window.location.origin;
+  
+  // For development environments
+  if (currentOrigin.includes('localhost') || 
+      currentOrigin.includes('127.0.0.1') || 
+      currentOrigin.includes('192.168.')) {
+    return currentOrigin;
+  }
+  
+  // For production environments (Vercel, Netlify, etc.)
+  // This should match exactly what you configure in Google Cloud Console
+  return currentOrigin;
+};
 
-console.log("OAuth Redirect URI:", REDIRECT_URI);
+const REDIRECT_URI = getRedirectURI();
+
+console.log("🔧 OAuth Configuration:", {
+  redirectURI: REDIRECT_URI,
+  clientId: CLIENT_ID,
+  origin: window.location.origin,
+  isExtension: isChromeExtension,
+  environment: REDIRECT_URI.includes('localhost') ? 'development' : 'production'
+});
 
 // Define proper TypeScript interface for Google Calendar event
 interface GoogleCalendarEvent {
@@ -67,6 +94,49 @@ const adjustDateTimeIfPastToday = (dateTime: string): { adjustedDateTime: string
 };
 
 /**
+ * Test function to validate OAuth configuration and debug issues
+ */
+export const testOAuthConfig = () => {
+  console.log("🔧 OAuth Configuration Test:");
+  console.log("- Client ID:", CLIENT_ID);
+  console.log("- Redirect URI:", REDIRECT_URI);
+  console.log("- Current Origin:", window.location.origin);
+  console.log("- Is Chrome Extension:", isChromeExtension);
+  console.log("- Scopes:", SCOPES);
+  
+  // Test if the redirect URI matches expected patterns
+  const isValidRedirectURI = 
+    REDIRECT_URI.startsWith('https://') || 
+    REDIRECT_URI.startsWith('http://localhost') || 
+    REDIRECT_URI.startsWith('chrome-extension://');
+    
+  console.log("- Valid Redirect URI format:", isValidRedirectURI);
+  
+  if (!isValidRedirectURI) {
+    console.warn("⚠️ Warning: Redirect URI might not be properly configured");
+    console.warn("Expected format: https://yourdomain.com or http://localhost:port");
+  }
+  
+  // Check if running in production
+  const isProduction = !REDIRECT_URI.includes('localhost') && !REDIRECT_URI.includes('127.0.0.1');
+  console.log("- Production environment:", isProduction);
+  
+  if (isProduction) {
+    console.log("🚀 Production detected. Make sure this URL is added to Google Cloud Console:");
+    console.log(`   ${REDIRECT_URI}`);
+  }
+  
+  return {
+    clientId: CLIENT_ID,
+    redirectUri: REDIRECT_URI,
+    isExtension: isChromeExtension,
+    isValidFormat: isValidRedirectURI,
+    isProduction,
+    currentOrigin: window.location.origin
+  };
+};
+
+/**
  * Launches Chrome extension OAuth flow and retrieves an access token.
  */
 export const getAuthTokenFromExtension = (): Promise<string> => {
@@ -79,6 +149,8 @@ export const getAuthTokenFromExtension = (): Promise<string> => {
       `&scope=${encodeURIComponent(SCOPES)}` +
       `&prompt=consent` +
       `&access_type=online`;
+
+    console.log("🔐 Starting Chrome extension OAuth flow...");
 
     chrome.identity.launchWebAuthFlow(
       { url: authUrl, interactive: true },
@@ -93,6 +165,7 @@ export const getAuthTokenFromExtension = (): Promise<string> => {
         const accessToken = params.get("access_token");
 
         if (accessToken) {
+          console.log("✅ Chrome extension OAuth successful");
           resolve(accessToken);
         } else {
           reject(new Error("Access token not found in redirect URL"));
@@ -103,58 +176,163 @@ export const getAuthTokenFromExtension = (): Promise<string> => {
 };
 
 /**
- * Dev-only fallback for localhost: Performs OAuth login in a popup.
+ * Enhanced OAuth flow for web with better error handling, CORS support, and production compatibility
  */
 export const getAuthTokenFromWeb = (): Promise<string> => {
   return new Promise((resolve, reject) => {
+    // Add state parameter for security (CSRF protection)
+    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
     const authUrl =
       `https://accounts.google.com/o/oauth2/v2/auth` +
       `?client_id=${encodeURIComponent(CLIENT_ID)}` +
       `&response_type=token` +
       `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
       `&scope=${encodeURIComponent(SCOPES)}` +
-      `&prompt=consent`;
+      `&state=${encodeURIComponent(state)}` +
+      `&prompt=consent` +
+      `&access_type=online`;
+
+    console.log("🔐 Starting web OAuth flow...");
+    console.log("Auth URL:", authUrl);
+    console.log("Expected redirect URI:", REDIRECT_URI);
 
     const width = 500;
     const height = 600;
-    const left = window.innerWidth / 2 - width / 2;
-    const top = window.innerHeight / 2 - height / 2;
+    const left = Math.max(0, window.innerWidth / 2 - width / 2);
+    const top = Math.max(0, window.innerHeight / 2 - height / 2);
 
     const popup = window.open(
       authUrl,
       "GoogleOAuth",
-      `width=${width},height=${height},top=${top},left=${left}`
+      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes,status=yes`
     );
 
     if (!popup) {
-      reject(new Error("Failed to open OAuth popup"));
+      const error = "Failed to open OAuth popup. Please allow popups for this site and try again.";
+      console.error(error);
+      reject(new Error(error));
       return;
     }
 
+    let pollCount = 0;
+    const maxPolls = 300; // 150 seconds max wait time
+    let hasResolved = false;
+
     const poll = setInterval(() => {
+      pollCount++;
+      
       try {
+        // Check if popup was closed by user
         if (!popup || popup.closed) {
-          clearInterval(poll);
-          reject(new Error("OAuth popup closed"));
+          if (!hasResolved) {
+            clearInterval(poll);
+            console.log("❌ OAuth popup was closed by user");
+            reject(new Error("OAuth popup was closed before authentication completed"));
+          }
           return;
         }
 
-        const hash = popup.location.hash;
-        if (hash.includes("access_token")) {
-          const params = new URLSearchParams(hash.substring(1));
-          const token = params.get("access_token");
+        // Check for timeout
+        if (pollCount > maxPolls) {
           clearInterval(poll);
           popup.close();
-          if (token) {
-            resolve(token);
-          } else {
-            reject(new Error("No access token found"));
+          if (!hasResolved) {
+            console.log("❌ OAuth flow timed out");
+            reject(new Error("OAuth flow timed out after 150 seconds"));
+          }
+          return;
+        }
+
+        // Try to read the popup URL (this will fail due to CORS until we're redirected back)
+        let currentUrl: string;
+        try {
+          currentUrl = popup.location.href;
+        } catch (e) {
+          // Expected cross-origin error while popup is on Google's domain
+          return;
+        }
+
+        // If we can read the URL, we've been redirected back to our domain
+        console.log("🔄 Redirected back to:", currentUrl);
+
+        if (currentUrl && currentUrl.startsWith(REDIRECT_URI)) {
+          const url = new URL(currentUrl);
+          const hash = url.hash;
+          
+          if (hash && hash.includes("access_token")) {
+            const params = new URLSearchParams(hash.substring(1));
+            const token = params.get("access_token");
+            const returnedState = params.get("state");
+            const error = params.get("error");
+            const errorDescription = params.get("error_description");
+            
+            clearInterval(poll);
+            popup.close();
+            hasResolved = true;
+            
+            if (error) {
+              console.error("❌ OAuth error:", error, errorDescription);
+              reject(new Error(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`));
+            } else if (returnedState !== state) {
+              console.error("❌ State parameter mismatch - possible CSRF attack");
+              reject(new Error("Invalid state parameter - possible CSRF attack"));
+            } else if (token) {
+              console.log("✅ Web OAuth successful - token received");
+              resolve(token);
+            } else {
+              console.error("❌ No access token found in redirect");
+              reject(new Error("No access token found in redirect URL"));
+            }
+          } else if (hash && hash.includes("error")) {
+            // Handle error in hash
+            const params = new URLSearchParams(hash.substring(1));
+            const error = params.get("error");
+            const errorDescription = params.get("error_description");
+            
+            clearInterval(poll);
+            popup.close();
+            hasResolved = true;
+            
+            console.error("❌ OAuth error in hash:", error, errorDescription);
+            reject(new Error(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`));
           }
         }
       } catch (err) {
-        // Ignore cross-origin errors while waiting
+        // Ignore expected cross-origin errors while waiting
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        if (!errorMessage.toLowerCase().includes('cross-origin') && 
+            !errorMessage.toLowerCase().includes('blocked a frame')) {
+          console.warn("OAuth polling error:", err);
+        }
       }
     }, 500);
+
+    // Additional cleanup - handle popup focus/blur events
+    const handlePopupClosed = () => {
+      setTimeout(() => {
+        try {
+          if (popup && popup.closed && !hasResolved) {
+            clearInterval(poll);
+            console.log("❌ OAuth popup was closed during authentication");
+            reject(new Error("OAuth popup was closed during authentication"));
+          }
+        } catch (e) {
+          // Ignore errors checking popup status
+        }
+      }, 1000);
+    };
+
+    // Check if popup was blocked initially
+    setTimeout(() => {
+      try {
+        if (!popup || popup.closed) {
+          handlePopupClosed();
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    }, 100);
   });
 };
 
@@ -162,6 +340,7 @@ export const getAuthTokenFromWeb = (): Promise<string> => {
  * Generic entry point — uses extension or web depending on context.
  */
 export const getAuthToken = (): Promise<string> => {
+  console.log("🚀 Getting auth token...", { isExtension: isChromeExtension });
   return isChromeExtension ? getAuthTokenFromExtension() : getAuthTokenFromWeb();
 };
 
