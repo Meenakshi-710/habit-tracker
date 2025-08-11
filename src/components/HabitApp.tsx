@@ -959,13 +959,13 @@ function HabitApp() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:!bg-black text-black dark:text-white">
       {isLoading && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 shadow-xl">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-600"></div>
-              <span className="text-gray-600">
+              <span className="text-gray-600 dark:text-gray-300">
                 {accessToken && isCalendarConnected
                   ? "Syncing with Google Calendar..."
                   : "Processing..."}
@@ -992,7 +992,7 @@ function HabitApp() {
         <HabitList
           habits={habitsForSelectedDate}
           selectedDate={selectedDate}
-          allHabits={allHabits} // Pass all habits for streak calculation
+          allHabits={allHabits}
           onToggleComplete={toggleHabitComplete}
           onEdit={handleEditHabit}
           onDelete={deleteHabit}

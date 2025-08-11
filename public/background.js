@@ -1,4 +1,4 @@
-// Enhanced background.js with proper message handling and calendar sync
+// Enhanced background.js with proper message handling, calendar sync, and streak milestone notifications
 
 function scheduleItemAlarm(item) {
   const { id, name, title, dateTime, remindBeforeMinutes = 0, type = 'habit' } = item;
@@ -88,6 +88,87 @@ function loadAndScheduleAllItems() {
   });
 }
 
+// Streak milestone definitions for notifications
+const STREAK_MILESTONES = {
+  3: {
+    title: "Getting Started!",
+    emoji: "🌟",
+    message: "Great start! You're building momentum!"
+  },
+  7: {
+    title: "Week Warrior!",
+    emoji: "⚡",
+    message: "Amazing! You've completed a full week!"
+  },
+  10: {
+    title: "Bronze Achiever!",
+    emoji: "🥉",
+    message: "Congratulations! You've earned your first medal!"
+  },
+  21: {
+    title: "Habit Former!",
+    emoji: "🏆",
+    message: "Incredible! You're officially forming a habit!"
+  },
+  30: {
+    title: "Monthly Master!",
+    emoji: "👑",
+    message: "Outstanding! A full month of dedication!"
+  },
+  50: {
+    title: "Silver Champion!",
+    emoji: "🥈",
+    message: "Phenomenal! You're a true champion!"
+  },
+  100: {
+    title: "Gold Legend!",
+    emoji: "🥇",
+    message: "LEGENDARY! 100 days of unstoppable commitment!"
+  }
+};
+
+// Function to create streak milestone notification
+function createStreakMilestoneNotification(payload) {
+  const { habitName, streak, milestone, reward, message } = payload;
+  const milestoneData = STREAK_MILESTONES[streak];
+  
+  if (!milestoneData) return;
+
+  const notificationId = `streak-${payload.habitId}-${streak}-${Date.now()}`;
+  
+  chrome.notifications.create(notificationId, {
+    type: "basic",
+    iconUrl: "logo.png",
+    title: `${milestoneData.emoji} ${milestoneData.title}`,
+    message: `"${habitName}" - ${streak} day streak! ${milestoneData.message}`,
+    contextMessage: reward,
+    priority: 2, // High priority for achievements
+    requireInteraction: true // Keep notification until user interacts
+  });
+
+  // Store achievement in local storage for potential future features
+  chrome.storage.local.get(['streak-achievements'], (result) => {
+    const achievements = result['streak-achievements'] || [];
+    achievements.push({
+      habitId: payload.habitId,
+      habitName,
+      streak,
+      milestone: milestoneData.title,
+      achievedAt: payload.achievedAt,
+      reward
+    });
+    
+    // Keep only last 50 achievements to prevent storage bloat
+    if (achievements.length > 50) {
+      achievements.splice(0, achievements.length - 50);
+    }
+    
+    chrome.storage.local.set({ 'streak-achievements': achievements });
+  });
+
+  console.log(`🏆 Streak milestone notification created: ${habitName} - ${streak} days`);
+}
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   const alarmId = alarm.name;
   console.log("🔥 Alarm triggered:", alarmId);
@@ -161,7 +242,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   });
 });
 
-// Enhanced message handling with dashboard tab routing
+// Enhanced message handling with dashboard tab routing and streak notifications
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("📨 Received message:", message.type, message);
 
@@ -203,6 +284,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
 
       console.log(`✅ Completion notification sent for ${type} "${itemName}"`);
+      sendResponse({ success: true });
+      return true;
+
+    case "STREAK_MILESTONE_ACHIEVED":
+      console.log("🏆 Streak milestone achieved:", message.payload);
+      createStreakMilestoneNotification(message.payload);
       sendResponse({ success: true });
       return true;
 
@@ -293,10 +380,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return true;
 
+    case "GET_STREAK_ACHIEVEMENTS":
+      // New message type to retrieve streak achievements
+      chrome.storage.local.get(['streak-achievements'], (result) => {
+        const achievements = result['streak-achievements'] || [];
+        sendResponse({ success: true, achievements });
+      });
+      return true;
+
+    case "CLEAR_STREAK_ACHIEVEMENTS":
+      // New message type to clear streak achievements
+      chrome.storage.local.remove(['streak-achievements'], () => {
+        sendResponse({ success: true, message: "Achievements cleared" });
+      });
+      return true;
+
     default:
       console.warn("❓ Unknown message type:", message.type);
       sendResponse({ success: false, error: "Unknown message type" });
       return false;
+  }
+});
+
+// Enhanced notification click handler for streak achievements
+chrome.notifications.onClicked.addListener((notificationId) => {
+  console.log("🔔 Notification clicked:", notificationId);
+  
+  // Clear the notification
+  chrome.notifications.clear(notificationId);
+  
+  // If it's a streak notification, open dashboard to show achievements
+  if (notificationId.startsWith('streak-')) {
+    chrome.tabs.query({ url: chrome.runtime.getURL('index.html') }, (tabs) => {
+      if (tabs.length > 0) {
+        chrome.tabs.update(tabs[0].id, { active: true });
+        chrome.windows.update(tabs[0].windowId, { focused: true });
+      } else {
+        chrome.tabs.create({ 
+          url: chrome.runtime.getURL('index.html#achievements')
+        });
+      }
+    });
   }
 });
 

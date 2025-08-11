@@ -84,8 +84,8 @@ const StepOne = ({ onBack, onContinue }: StepOneProps) => {
         <div className="w-full space-y-6 mt-4 px-2 sm:px-0">
           {/* Wake Time */}
           <div className="flex flex-col sm:flex-row justify-between items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-6 py-4 shadow-sm focus-within:border-pink-600 focus-within:ring-2 focus-within:ring-pink-200 dark:focus-within:ring-pink-800">
-            <span className="text-lg sm:text-xl font-medium flex items-center gap-2 mb-2 sm:mb-0">
-              <WiSunrise className="text-2xl sm:text-3xl text-pink-600" />
+            <span className="text-lg sm:text-xl font-medium flex items-center gap-2 mb-2 sm:mb-0 text-gray-900 dark:text-white">
+              <WiSunrise className="text-2xl sm:text-3xl text-pink-600 dark:text-white" />
               Wake up
             </span>
             <input
@@ -98,8 +98,8 @@ const StepOne = ({ onBack, onContinue }: StepOneProps) => {
 
           {/* Wind Down Time */}
           <div className="flex flex-col sm:flex-row justify-between items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-6 py-4 shadow-sm focus-within:border-pink-600 focus-within:ring-2 focus-within:ring-pink-200 dark:focus-within:ring-pink-800">
-            <span className="text-lg sm:text-xl font-medium flex items-center gap-2 mb-2 sm:mb-0">
-              <WiMoonAltWaningCrescent6 className="text-2xl sm:text-3xl text-pink-600" />
+            <span className="text-lg sm:text-xl font-medium flex items-center gap-2 mb-2 sm:mb-0 text-gray-900 dark:text-white">
+              <WiMoonAltWaningCrescent6 className="text-2xl sm:text-3xl text-pink-600 dark:text-white" />
               Wind down
             </span>
             <input
@@ -114,7 +114,7 @@ const StepOne = ({ onBack, onContinue }: StepOneProps) => {
         {/* Continue Button */}
         <button
           onClick={handleContinue}
-          className="mt-10 w-full max-w-sm bg-black dark:bg-white text-white dark:text-black text-lg sm:text-xl font-semibold py-3 sm:py-4 px-6 rounded-full shadow-md hover:scale-105 transition-transform hover:bg-pink-600"
+          className="mt-10 w-full max-w-sm bg-black dark:bg-white text-white dark:text-black text-lg sm:text-xl font-semibold py-3 sm:py-4 px-6 rounded-full shadow-md hover:scale-105 transition-transform hover:bg-pink-600 dark:hover:bg-pink-400"
         >
           Continue
         </button>

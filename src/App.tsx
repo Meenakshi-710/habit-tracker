@@ -7,7 +7,7 @@ function App() {
   const [step, setStep] = useState<"welcome" | "stepOne" | "app">("welcome");
 
   return (
-    <div className="">
+    <div>
       {step === "welcome" && (
         <WelcomePage onGetStarted={() => setStep("stepOne")} />
       )}

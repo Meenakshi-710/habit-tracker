@@ -37,3 +37,49 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Add this to your main CSS file or create a separate dark-mode.css */
+
+/* Ensure smooth transitions for theme changes */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Dark mode base styles */
+.dark {
+  color-scheme: dark;
+}
+
+/* Custom scrollbar for dark mode */
+.dark .scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.dark .scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Ensure proper contrast for form elements in dark mode */
+.dark input,
+.dark textarea,
+.dark select {
+  color-scheme: dark;
+}
+
+/* Custom focus styles for dark mode */
+.dark *:focus {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 2px;
+}
+
+/* Ensure backdrop blur works in dark mode */
+.dark .backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}
+
+.dark .backdrop-blur-xl {
+  backdrop-filter: blur(24px);
+}

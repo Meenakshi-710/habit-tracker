@@ -1,4 +1,5 @@
 import { Plus, Calendar, Sun, Moon, Check } from "lucide-react";
+import { useTheme } from "../hooks/useTheme";
 
 interface HeaderProps {
   activeTab: string;
@@ -25,6 +26,8 @@ export default function Header({
   userName,
   selectedDate,
 }: HeaderProps) {
+  const { theme, toggleTheme } = useTheme();
+  
   const today = new Date();
   const dayName = today.toLocaleDateString("en-US", { weekday: "long" });
   const monthName = today.toLocaleDateString("en-US", { month: "long" });
@@ -120,13 +123,13 @@ export default function Header({
   };
 
   return (
-    <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-blue-50/30 backdrop-blur-xl border-b border-white/20">
+    <div className="relative bg-gradient-to-br from-white via-gray-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-blue-900/30 backdrop-blur-xl border-b border-white/20 dark:border-gray-700/20">
       {/* Subtle background pattern */}
-      <div className="absolute inset-0 opacity-[0.02]">
+      <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05]">
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0,0,0) 1px, transparent 0)`,
+            backgroundImage: `radial-gradient(circle at 1px 1px, ${theme === 'dark' ? 'rgb(255,255,255)' : 'rgb(0,0,0)'} 1px, transparent 0)`,
             backgroundSize: "24px 24px",
           }}
         />
@@ -137,27 +140,27 @@ export default function Header({
         <div className="flex flex-col lg:flex-row items-start justify-between gap-6 mb-8">
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl">
-                <GreetingIcon size={20} className="text-amber-600" />
+              <div className="p-2 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-2xl">
+                <GreetingIcon size={20} className="text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500 tracking-wide">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 tracking-wide">
                   {greeting}
                   {userName ? `, ${userName}` : ""}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                   {monthName} {dayNumber}, {year}
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extralight text-gray-900 tracking-tight leading-none">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extralight text-gray-900 dark:text-white tracking-tight leading-none">
                 {dayName}
               </h1>
               <div className="flex items-center space-x-3">
-                <div className="h-1 w-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
-                <p className="text-sm text-gray-500 font-medium">
+                <div className="h-1 w-12 bg-gradient-to-r from-blue-500 to-purple-500 dark:from-blue-400 dark:to-purple-400 rounded-full"></div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                   Make today count
                 </p>
               </div>
@@ -165,61 +168,95 @@ export default function Header({
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="group relative overflow-hidden px-4 py-3 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-700 transition-colors duration-200">
+                  {theme === 'light' ? (
+                    <Moon size={16} className="text-gray-600 dark:text-gray-300" />
+                  ) : (
+                    <Sun size={16} className="text-yellow-500" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300 transition-colors duration-200">
+                    {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    Switch theme
+                  </p>
+                </div>
+              </div>
+              
+              {/* Hover effect overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-transparent dark:from-white/5 dark:via-white/2 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+            </button>
+
             {/* Enhanced Calendar Button */}
             <button
               onClick={handleCalendarToggle}
               className={`group relative overflow-hidden px-4 py-3 rounded-2xl border-2 transition-all duration-300 cursor-pointer ${
                 isCalendarConnected
-                  ? "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
-                  : "border-gray-200 bg-gray-50/50 hover:bg-gray-50"
+                  ? "border-emerald-200 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/20 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                  : "border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
               title={isCalendarConnected ? "Disconnect Google Calendar" : "Connect Google Calendar"}
             >
               <div className="flex items-center space-x-3">
                 <div
                   className={`p-1.5 rounded-xl transition-colors duration-200 ${
-                    isCalendarConnected ? "bg-emerald-100" : "bg-gray-100"
+                    isCalendarConnected 
+                      ? "bg-emerald-100 dark:bg-emerald-900/40" 
+                      : "bg-gray-100 dark:bg-gray-700"
                   }`}
                 >
                   <Calendar
                     size={16}
                     className={
-                      isCalendarConnected ? "text-emerald-600" : "text-gray-400"
+                      isCalendarConnected 
+                        ? "text-emerald-600 dark:text-emerald-400" 
+                        : "text-gray-400 dark:text-gray-500"
                     }
                   />
                 </div>
                 <div>
                   <p
                     className={`text-sm font-medium transition-colors duration-200 ${
-                      isCalendarConnected ? "text-emerald-700" : "text-gray-600"
+                      isCalendarConnected 
+                        ? "text-emerald-700 dark:text-emerald-300" 
+                        : "text-gray-600 dark:text-gray-300"
                     }`}
                   >
                     {isCalendarConnected ? "Calendar Synced" : "Sync Calendar"}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
                     {isCalendarConnected ? "Click to disconnect" : "Connect to sync"}
                   </p>
                 </div>
               </div>
               
               {/* Hover effect overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-transparent dark:from-white/5 dark:via-white/2 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
             </button>
 
             {/* Enhanced Add Button */}
             <button
               onClick={handleAddHabitClick}
-              className="group relative overflow-hidden bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
+              className="group relative overflow-hidden bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 px-8 py-4 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
               title="Add new habit, task, or event"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-transparent dark:from-black/10 dark:via-black/5 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative flex items-center space-x-3">
-                <div className="p-1 bg-white/10 rounded-lg group-hover:rotate-90 transition-transform duration-300">
+                <div className="p-1 bg-white/10 dark:bg-black/10 rounded-lg group-hover:rotate-90 transition-transform duration-300">
                   <Plus size={18} />
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-medium">Add New</p>
-                  <p className="text-xs text-gray-300">Build something great</p>
+                  <p className="text-xs text-gray-300 dark:text-gray-600">Build something great</p>
                 </div>
               </div>
             </button>
@@ -234,7 +271,7 @@ export default function Header({
                 {/* Month Label - Rotated and positioned at start of month */}
                 <div className="flex flex-col items-center justify-center h-24 mr-2">
                   <div
-                    className="text-sm font-bold text-gray-700 whitespace-nowrap transform -rotate-90 origin-center"
+                    className="text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap transform -rotate-90 origin-center"
                     style={{
                       transformOrigin: "center center",
                     }}
@@ -261,7 +298,9 @@ export default function Header({
                       >
                         <span
                           className={`text-xs font-semibold transition-colors duration-200 ${
-                            isSelected ? "text-pink-600" : "text-gray-500"
+                            isSelected 
+                              ? "text-pink-600 dark:text-pink-400" 
+                              : "text-gray-500 dark:text-gray-400"
                           }`}
                         >
                           {day.day}
@@ -270,15 +309,15 @@ export default function Header({
                           className={`relative w-10 h-10 flex items-center justify-center rounded-2xl text-sm font-semibold transition-all duration-200
                     ${
                       day.isToday
-                        ? "bg-gradient-to-br from-gray-900 to-gray-700 text-white shadow-lg scale-110"
+                        ? "bg-gradient-to-br from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 text-white dark:text-gray-900 shadow-lg scale-110"
                         : isSelected
-                        ? "bg-pink-100 text-pink-600 shadow-md scale-105 border-2 border-pink-600"
-                        : "text-gray-600 hover:bg-white hover:shadow-md hover:scale-105"
+                        ? "bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 shadow-md scale-105 border-2 border-pink-600 dark:border-pink-400"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:scale-105"
                     }`}
                         >
                           {day.number}
                           {day.isToday && (
-                            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse" />
+                            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-pulse" />
                           )}
                         </div>
                       </button>
@@ -291,39 +330,39 @@ export default function Header({
         </div>
 
         {/* Enhanced Progress Section */}
-        <div className="bg-white/40 backdrop-blur-sm rounded-3xl p-6 border border-white/30">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+        <div className="bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm rounded-3xl p-6 border border-white/30 dark:border-gray-700/30">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
               <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent mb-2">
                   Today's Progress
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                   The secret of getting ahead is getting started.
                 </p>
               </div>
               <div className="flex items-center space-x-8">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-pink-600">
+                  <div className="text-3xl font-bold text-pink-600 dark:text-pink-400">
                     {completedCount}
                   </div>
-                  <div className="text-sm text-gray-500 font-medium">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                     Completed
                   </div>
                 </div>
-                <div className="w-px h-12 bg-gray-200"></div>
+                <div className="w-px h-12 bg-gray-200 dark:bg-gray-700"></div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-800">
+                  <div className="text-3xl font-bold text-gray-800 dark:text-gray-200">
                     {totalHabits}
                   </div>
-                  <div className="text-sm text-gray-500 font-medium">Total</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total</div>
                 </div>
-                <div className="w-px h-12 bg-gray-200"></div>
+                <div className="w-px h-12 bg-gray-200 dark:bg-gray-700"></div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {Math.round(progressPercentage)}%
                   </div>
-                  <div className="text-sm text-gray-500 font-medium">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                     Progress
                   </div>
                 </div>
@@ -333,17 +372,17 @@ export default function Header({
 
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Completion Rate
               </span>
-              <span className="text-sm font-bold text-gray-900">
+              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                 {Math.round(progressPercentage)}%
               </span>
             </div>
 
-            <div className="relative h-3 bg-gray-300 rounded-full overflow-hidden">
+            <div className="relative h-3 bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out"
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 dark:from-pink-400 dark:via-purple-400 dark:to-indigo-400 rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${progressPercentage}%` }}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-full"></div>
@@ -356,10 +395,10 @@ export default function Header({
                   key={i}
                   className={`w-6 h-6 flex items-center justify-center rounded-full transition-all duration-300 ${
                     i < completedCount
-                      ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-sm"
+                      ? "bg-gradient-to-r from-pink-500 to-purple-500 dark:from-pink-400 dark:to-purple-400 text-white shadow-sm"
                       : i < totalHabits
-                      ? "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                      : "bg-gray-100"
+                      ? "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
+                      : "bg-gray-100 dark:bg-gray-800"
                   }`}
                   title={
                     i < completedCount
