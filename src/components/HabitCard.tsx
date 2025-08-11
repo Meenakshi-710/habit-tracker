@@ -51,7 +51,7 @@ const STREAK_MILESTONES = [
     bgColor: "bg-blue-100 dark:bg-blue-900/30",
     borderColor: "border-blue-200 dark:border-blue-700",
     reward: "Consistency Building",
-    message: "Great start! You're building momentum!"
+    message: "Great start! You're building momentum!",
   },
   {
     days: 7,
@@ -61,7 +61,7 @@ const STREAK_MILESTONES = [
     bgColor: "bg-purple-100 dark:bg-purple-900/30",
     borderColor: "border-purple-200 dark:border-purple-700",
     reward: "Weekly Champion",
-    message: "Amazing! You've completed a full week!"
+    message: "Amazing! You've completed a full week!",
   },
   {
     days: 10,
@@ -71,7 +71,7 @@ const STREAK_MILESTONES = [
     bgColor: "bg-amber-100 dark:bg-amber-900/30",
     borderColor: "border-amber-200 dark:border-amber-700",
     reward: "Bronze Medal",
-    message: "Congratulations! You've earned your first medal!"
+    message: "Congratulations! You've earned your first medal!",
   },
   {
     days: 21,
@@ -81,7 +81,7 @@ const STREAK_MILESTONES = [
     bgColor: "bg-green-100 dark:bg-green-900/30",
     borderColor: "border-green-200 dark:border-green-700",
     reward: "Habit Master",
-    message: "Incredible! You're officially forming a habit!"
+    message: "Incredible! You're officially forming a habit!",
   },
   {
     days: 30,
@@ -91,7 +91,7 @@ const STREAK_MILESTONES = [
     bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
     borderColor: "border-yellow-200 dark:border-yellow-700",
     reward: "Monthly Crown",
-    message: "Outstanding! A full month of dedication!"
+    message: "Outstanding! A full month of dedication!",
   },
   {
     days: 50,
@@ -101,18 +101,19 @@ const STREAK_MILESTONES = [
     bgColor: "bg-gray-100 dark:bg-gray-900/30",
     borderColor: "border-gray-200 dark:border-gray-700",
     reward: "Silver Trophy",
-    message: "Phenomenal! You're a true champion!"
+    message: "Phenomenal! You're a true champion!",
   },
   {
     days: 100,
     title: "Gold Legend!",
     icon: <FaCrown className="w-6 h-6" />,
     color: "text-yellow-400",
-    bgColor: "bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30",
+    bgColor:
+      "bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30",
     borderColor: "border-yellow-300 dark:border-yellow-600",
     reward: "Gold Crown",
-    message: "LEGENDARY! 100 days of unstoppable commitment!"
-  }
+    message: "LEGENDARY! 100 days of unstoppable commitment!",
+  },
 ];
 
 export default function HabitCard({
@@ -153,7 +154,7 @@ export default function HabitCard({
     const isGoogleCalendarEvent = habit.id?.startsWith("gcal-");
     const is7DaySeries =
       habit.type === "habit" &&
-      ((habit.id.includes("-20") && habit.id.match(/-\d{4}-\d{2}-\d{2}$/)) || 
+      ((habit.id.includes("-20") && habit.id.match(/-\d{4}-\d{2}-\d{2}$/)) ||
         isGoogleCalendarEvent);
 
     if (isGoogleCalendarEvent) {
@@ -169,16 +170,36 @@ export default function HabitCard({
     }
   };
 
-  const categoryIcons: { [key: string]: JSX.Element } = {
-    "Health & Fitness": <FaRunning className="text-pink-600 dark:text-pink-400" />,
-    Learning: <FaBook className="text-blue-600 dark:text-blue-400" />,
-    Productivity: <FaBriefcase className="text-yellow-600 dark:text-yellow-400" />,
-    Mindfulness: <FaSpa className="text-green-600 dark:text-green-400" />,
-    Social: <FaUsers className="text-indigo-600 dark:text-indigo-400" />,
-    Hobbies: <FaPaintBrush className="text-purple-600 dark:text-purple-400" />,
-    Finance: <FaMoneyBillWave className="text-emerald-600 dark:text-emerald-400" />,
-    Calendar: <Calendar className="text-blue-600 dark:text-blue-400" />,
-    Other: <FaStar className="text-gray-500 dark:text-gray-400" />,
+  const categoryIcons: { [key: string]: React.ElementType } = {
+    "Health/Fitness": FaRunning,
+    Learning: FaBook,
+    Productivity: FaBriefcase,
+    Mindfulness: FaSpa,
+    Social: FaUsers,
+    Hobbies: FaPaintBrush,
+    Finance: FaMoneyBillWave,
+    Other: FaStar,
+
+    // also accept older/alternate keys so old data still works
+    "Health & Fitness": FaRunning,
+    Calendar: Calendar,
+  };
+
+  const resolveCategoryIcon = (categoryName?: string): React.ElementType => {
+    if (!categoryName) return FaStar;
+    // try exact match first
+    if (categoryIcons[categoryName]) return categoryIcons[categoryName];
+
+    // try normalized variants (lowercase, replace & and / with space)
+    const normalized = categoryName.replace(/[&/]/g, " ").trim().toLowerCase();
+    for (const key of Object.keys(categoryIcons)) {
+      if (key.toLowerCase().replace(/[&/]/g, " ").trim() === normalized) {
+        return categoryIcons[key];
+      }
+    }
+
+    // fallback
+    return FaStar;
   };
 
   // Function to calculate streak with given completed dates
@@ -228,19 +249,22 @@ export default function HabitCard({
 
     // If current habit is not completed, streak is 0
     if (!isCompleted) {
-      return { streak: 0, milestone: null, nextMilestone: STREAK_MILESTONES[0] };
+      return {
+        streak: 0,
+        milestone: null,
+        nextMilestone: STREAK_MILESTONES[0],
+      };
     }
 
     const checkDate = selectedDate ? new Date(selectedDate) : new Date();
     const streak = calculateStreak(habit.completedDates, checkDate);
 
     // Find current milestone and next milestone
-    const currentMilestone = STREAK_MILESTONES
-      .slice()
+    const currentMilestone = STREAK_MILESTONES.slice()
       .reverse()
-      .find(m => streak >= m.days);
+      .find((m) => streak >= m.days);
 
-    const nextMilestone = STREAK_MILESTONES.find(m => streak < m.days);
+    const nextMilestone = STREAK_MILESTONES.find((m) => streak < m.days);
 
     return { streak, milestone: currentMilestone, nextMilestone };
   };
@@ -248,28 +272,36 @@ export default function HabitCard({
   // Function to trigger streak achievement notification
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const triggerStreakNotification = (milestone: any, streak: number) => {
-    console.log(`🎉 Triggering notification for ${habit.name}: ${streak} days - ${milestone.title}`);
-    
+    console.log(
+      `🎉 Triggering notification for ${habit.name}: ${streak} days - ${milestone.title}`
+    );
+
     // Send message to background script for notification
     if (typeof chrome !== "undefined" && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: "STREAK_MILESTONE_ACHIEVED",
-        payload: {
-          habitId: habit.id,
-          habitName: habit.name,
-          streak,
-          milestone: milestone.title,
-          reward: milestone.reward,
-          message: milestone.message,
-          achievedAt: new Date().toISOString(),
+      chrome.runtime.sendMessage(
+        {
+          type: "STREAK_MILESTONE_ACHIEVED",
+          payload: {
+            habitId: habit.id,
+            habitName: habit.name,
+            streak,
+            milestone: milestone.title,
+            reward: milestone.reward,
+            message: milestone.message,
+            achievedAt: new Date().toISOString(),
+          },
         },
-      }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("❌ Failed to send streak notification:", chrome.runtime.lastError);
-        } else {
-          console.log("✅ Streak notification message sent successfully");
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "❌ Failed to send streak notification:",
+              chrome.runtime.lastError
+            );
+          } else {
+            console.log("✅ Streak notification message sent successfully");
+          }
         }
-      });
+      );
     }
 
     // Show in-app celebration animation
@@ -280,8 +312,9 @@ export default function HabitCard({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const showStreakCelebration = (milestone: any) => {
     // Create celebration effect
-    const celebration = document.createElement('div');
-    celebration.className = 'fixed inset-0 flex items-center justify-center z-50 pointer-events-none';
+    const celebration = document.createElement("div");
+    celebration.className =
+      "fixed inset-0 flex items-center justify-center z-50 pointer-events-none";
     celebration.innerHTML = `
       <div class="streak-celebration-card bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl border-4 ${milestone.borderColor} max-w-md mx-4 animate-bounce">
         <div class="text-center">
@@ -323,19 +356,24 @@ export default function HabitCard({
   const getCardIcon = () => {
     if (isDefaultTimeHabit) {
       return habit.id === "wake-time" ? (
-        <AlarmClock size={16} className="text-orange-500 dark:text-orange-400" />
+        <AlarmClock
+          size={16}
+          className="text-orange-500 dark:text-orange-400"
+        />
       ) : (
         <Moon size={16} className="text-indigo-500 dark:text-indigo-400" />
       );
     }
 
     if (isGoogleCalendarEvent) {
-      return <Calendar size={16} className="text-blue-600 dark:text-blue-400" />;
+      return (
+        <Calendar size={16} className="text-blue-600 dark:text-blue-400" />
+      );
     }
 
-    return (
-      categoryIcons[habit.category] || <FaStar className="text-pink-600 dark:text-pink-400" />
-    );
+    // Resolve a component and render it (so props like size/className apply)
+    const Icon = resolveCategoryIcon(habit.category);
+    return <Icon size={16} className="text-pink-600 dark:text-pink-400" />;
   };
 
   // Get type label and icon
@@ -393,10 +431,16 @@ export default function HabitCard({
   // FIXED: Handle habit completion with proper streak milestone check
   const handleToggleComplete = () => {
     const wasCompleted = isCompleted;
-    const currentTargetDate = selectedDate ? new Date(selectedDate) : new Date();
+    const currentTargetDate = selectedDate
+      ? new Date(selectedDate)
+      : new Date();
     const currentTargetDateString = currentTargetDate.toDateString();
-    
-    console.log(`🔄 Toggle completion for ${habit.name}: was ${wasCompleted ? 'completed' : 'not completed'}`);
+
+    console.log(
+      `🔄 Toggle completion for ${habit.name}: was ${
+        wasCompleted ? "completed" : "not completed"
+      }`
+    );
 
     // Call the parent's toggle function first
     onToggleComplete(habit.id);
@@ -405,38 +449,53 @@ export default function HabitCard({
     if (!wasCompleted && habit.type === "habit" && !isDefaultTimeHabit) {
       // Calculate what the new streak would be AFTER completion
       // Create updated completed dates array
-      const updatedCompletedDates = habit.completedDates.includes(currentTargetDateString) 
-        ? habit.completedDates 
+      const updatedCompletedDates = habit.completedDates.includes(
+        currentTargetDateString
+      )
+        ? habit.completedDates
         : [...habit.completedDates, currentTargetDateString];
-      
+
       // Calculate new streak with the updated dates
-      const newStreak = calculateStreak(updatedCompletedDates, currentTargetDate);
-      
-      console.log(`📊 Calculated new streak for ${habit.name}: ${newStreak} days`);
-      
+      const newStreak = calculateStreak(
+        updatedCompletedDates,
+        currentTargetDate
+      );
+
+      console.log(
+        `📊 Calculated new streak for ${habit.name}: ${newStreak} days`
+      );
+
       // Check if this completion hits a milestone
-      const achievedMilestone = STREAK_MILESTONES.find(m => m.days === newStreak);
-      
+      const achievedMilestone = STREAK_MILESTONES.find(
+        (m) => m.days === newStreak
+      );
+
       if (achievedMilestone) {
-        console.log(`🎯 Milestone detected: ${achievedMilestone.title} (${newStreak} days)`);
-        
+        console.log(
+          `🎯 Milestone detected: ${achievedMilestone.title} (${newStreak} days)`
+        );
+
         // Check for duplicate notifications using a more robust key
         const notificationKey = `milestone-${habit.id}-${newStreak}`;
         const lastNotified = localStorage.getItem(notificationKey);
         const today = new Date().toDateString();
-        
+
         if (lastNotified !== today) {
           // Store that we notified today to prevent duplicates
           localStorage.setItem(notificationKey, today);
-          
-          console.log(`🚀 Triggering milestone notification for ${habit.name}: ${newStreak} days`);
-          
+
+          console.log(
+            `🚀 Triggering milestone notification for ${habit.name}: ${newStreak} days`
+          );
+
           // Delay the notification slightly to allow the UI to update
           setTimeout(() => {
             triggerStreakNotification(achievedMilestone, newStreak);
           }, 300);
         } else {
-          console.log(`⏭️ Milestone notification already sent today for ${habit.name}: ${newStreak} days`);
+          console.log(
+            `⏭️ Milestone notification already sent today for ${habit.name}: ${newStreak} days`
+          );
         }
       } else {
         console.log(`📈 No milestone for ${newStreak} days (${habit.name})`);
@@ -445,21 +504,27 @@ export default function HabitCard({
 
     // Send completion message to background script
     if (!wasCompleted && typeof chrome !== "undefined" && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: "HABIT_COMPLETED",
-        payload: {
-          id: habit.id,
-          name: habit.name,
-          type: habit.type,
-          completedAt: new Date().toISOString(),
+      chrome.runtime.sendMessage(
+        {
+          type: "HABIT_COMPLETED",
+          payload: {
+            id: habit.id,
+            name: habit.name,
+            type: habit.type,
+            completedAt: new Date().toISOString(),
+          },
         },
-      }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("❌ Failed to send completion message:", chrome.runtime.lastError);
-        } else {
-          console.log("✅ Completion message sent successfully");
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "❌ Failed to send completion message:",
+              chrome.runtime.lastError
+            );
+          } else {
+            console.log("✅ Completion message sent successfully");
+          }
         }
-      });
+      );
     }
   };
 
@@ -480,10 +545,10 @@ export default function HabitCard({
 
       {/* Milestone indicator */}
       {milestone && (
-        <div className={`absolute top-2 right-8 ${milestone.bgColor} ${milestone.borderColor} border rounded-lg px-2 py-1 flex items-center gap-1`}>
-          <span className={milestone.color}>
-            {milestone.icon}
-          </span>
+        <div
+          className={`absolute top-2 right-8 ${milestone.bgColor} ${milestone.borderColor} border rounded-lg px-2 py-1 flex items-center gap-1`}
+        >
+          <span className={milestone.color}>{milestone.icon}</span>
           <span className={`text-xs font-semibold ${milestone.color}`}>
             {milestone.title}
           </span>
@@ -528,7 +593,9 @@ export default function HabitCard({
                 <Sparkles
                   size={14}
                   className={`animate-pulse ${
-                    isGoogleCalendarEvent ? "text-blue-500 dark:text-blue-400" : "text-pink-500 dark:text-pink-400"
+                    isGoogleCalendarEvent
+                      ? "text-blue-500 dark:text-blue-400"
+                      : "text-pink-500 dark:text-pink-400"
                   }`}
                 />
               )}
@@ -582,9 +649,13 @@ export default function HabitCard({
                         </span>
                       </div>
                       {milestone && (
-                        <div className={`flex items-center space-x-1 ${milestone.color}`}>
+                        <div
+                          className={`flex items-center space-x-1 ${milestone.color}`}
+                        >
                           {milestone.icon}
-                          <span className="text-xs font-medium">{milestone.reward}</span>
+                          <span className="text-xs font-medium">
+                            {milestone.reward}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -592,14 +663,17 @@ export default function HabitCard({
                   {/* Progress to next milestone */}
                   {nextMilestone && habit.type === "habit" && streak > 0 && (
                     <div className="text-xs text-gray-400 dark:text-gray-500">
-                      {nextMilestone.days - streak} days to {nextMilestone.title}
+                      {nextMilestone.days - streak} days to{" "}
+                      {nextMilestone.title}
                     </div>
                   )}
                 </div>
               ) : (
                 // Show description for tasks and events
                 habit.description && (
-                  <p className="mt-1 leading-relaxed text-gray-600 dark:text-gray-300">{habit.description}</p>
+                  <p className="mt-1 leading-relaxed text-gray-600 dark:text-gray-300">
+                    {habit.description}
+                  </p>
                 )
               )}
             </div>
@@ -610,7 +684,14 @@ export default function HabitCard({
         <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
           {!isDefaultTimeHabit && (
             <button
-              onClick={() => onEdit(habit)}
+              onClick={() => {
+                const habitToEdit = {
+                  ...habit,
+                  selectedDate:
+                    selectedDate || new Date().toISOString().split("T")[0],
+                };
+                onEdit(habitToEdit);
+              }}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110"
               title={`Edit ${
                 isEvent || isGoogleCalendarEvent ? "event" : "habit"

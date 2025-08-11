@@ -173,7 +173,7 @@ export default function HabitList({
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-full border border-gray-300 dark:border-gray-600 
                 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-pink-600 focus:outline-none shadow-sm"
+                pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-pink-300 focus:outline-none shadow-sm"
             />
           </div>
 
@@ -183,7 +183,7 @@ export default function HabitList({
               onClick={() => setShowFilterMenu((prev) => !prev)}
               className="p-2 rounded-full border border-gray-300 dark:border-gray-600 
                 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 
-                hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-2 focus:ring-pink-600 shadow-sm"
+                hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-2 focus:ring-pink-300 shadow-sm"
             >
               <Filter size={18} />
             </button>

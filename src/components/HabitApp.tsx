@@ -42,6 +42,117 @@ function HabitApp() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<Habit[]>([]);
 
+  /**
+   * Enhanced function to check if a habit should appear on a specific date
+   * based on its recurring type
+   */
+  const shouldHabitAppearOnDate = (
+    habit: Habit,
+    targetDateString: string
+  ): boolean => {
+    const habitStartDate = new Date(habit.dateTime);
+    const targetDate = new Date(targetDateString);
+
+    // Reset times to compare dates only
+    habitStartDate.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
+
+    // Target date must be on or after the habit start date
+    if (targetDate < habitStartDate) {
+      return false;
+    }
+
+    // Target date must be within the current year
+    const currentYear = new Date().getFullYear();
+    if (targetDate.getFullYear() !== currentYear) {
+      return false;
+    }
+
+    // If not recurring, must match exact date
+    if (
+      !habit.isRecurring ||
+      !habit.recurringType ||
+      habit.recurringType === "none"
+    ) {
+      return habitStartDate.getTime() === targetDate.getTime();
+    }
+
+    // Handle different recurring types
+    switch (habit.recurringType) {
+      case "daily":
+        return true; // Appears every day from start date onwards
+
+      case "weekly":
+        // Appears on the same day of week every week
+        return habitStartDate.getDay() === targetDate.getDay();
+
+      case "monthly":
+        // Appears on the same date every month
+        return habitStartDate.getDate() === targetDate.getDate();
+
+      case "monday":
+        return targetDate.getDay() === 1; // Monday
+
+      case "tuesday":
+        return targetDate.getDay() === 2; // Tuesday
+
+      case "wednesday":
+        return targetDate.getDay() === 3; // Wednesday
+
+      case "thursday":
+        return targetDate.getDay() === 4; // Thursday
+
+      case "friday":
+        return targetDate.getDay() === 5; // Friday
+
+      case "saturday":
+        return targetDate.getDay() === 6; // Saturday
+
+      case "sunday":
+        return targetDate.getDay() === 0; // Sunday
+
+      default:
+        return false;
+    }
+  };
+
+  /**
+   * Enhanced function to create recurring habits based on the selected recurring type
+   */
+  const createRecurringHabit = (
+    baseHabit: Omit<Habit, "id" | "completedDates" | "createdAt">,
+    startDate: Date
+  ): Habit => {
+    const baseId =
+      Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+    // Set the time from the original habit but use the start date
+    const originalDateTime = new Date(baseHabit.dateTime);
+    const habitDateTime = new Date(startDate);
+    habitDateTime.setHours(originalDateTime.getHours());
+    habitDateTime.setMinutes(originalDateTime.getMinutes());
+    habitDateTime.setSeconds(0);
+    habitDateTime.setMilliseconds(0);
+
+    const isRecurring =
+      baseHabit.isRecurring &&
+      baseHabit.recurringType &&
+      baseHabit.recurringType !== "none";
+
+    const habit: Habit = {
+      ...baseHabit,
+      id: baseId,
+      dateTime: habitDateTime.toISOString(),
+      completedDates: [],
+      createdAt: new Date().toISOString(),
+      type: baseHabit.type || "habit",
+      isRecurring,
+      recurringType: isRecurring ? baseHabit.recurringType : undefined,
+    };
+
+    return habit;
+  };
+
   // ADD: Chrome message listener for pin bar integration
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -119,35 +230,6 @@ function HabitApp() {
     };
   }, []);
 
-  const createDailyRecurringHabit = (
-    baseHabit: Omit<Habit, "id" | "completedDates" | "createdAt">,
-    startDate: Date
-  ): Habit => {
-    const baseId =
-      Date.now().toString() + Math.random().toString(36).substr(2, 9);
-
-    // Set the time from the original habit but use the start date
-    const originalDateTime = new Date(baseHabit.dateTime);
-    const habitDateTime = new Date(startDate);
-    habitDateTime.setHours(originalDateTime.getHours());
-    habitDateTime.setMinutes(originalDateTime.getMinutes());
-    habitDateTime.setSeconds(0);
-    habitDateTime.setMilliseconds(0);
-
-    const habit: Habit = {
-      ...baseHabit,
-      id: baseId,
-      dateTime: habitDateTime.toISOString(),
-      completedDates: [],
-      createdAt: new Date().toISOString(),
-      type: baseHabit.type || "habit",
-      isRecurring: true,
-      recurringType: "daily",
-    };
-
-    return habit;
-  };
-
   // Load calendar events from storage on mount
   useEffect(() => {
     const loadCalendarEvents = () => {
@@ -173,10 +255,6 @@ function HabitApp() {
       console.error("Failed to save calendar events:", error);
     }
   }, [calendarEvents]);
-
-  // Replace the fetchGoogleEvents function in your HabitApp.jsx with this fixed version:
-
-  // Replace the fetchGoogleEvents useEffect in your HabitApp.jsx with this corrected version:
 
   useEffect(() => {
     const fetchGoogleEvents = async () => {
@@ -214,13 +292,35 @@ function HabitApp() {
             let type: "habit" | "task" | "event" = "event"; // Default type with proper typing
             let cleanName = event.summary || "Untitled Event";
             let isRecurring = false;
-            let recurringType: "daily" | "weekly" | "monthly" | undefined =
-              undefined;
+            let recurringType: string | undefined = undefined;
 
             if (event.summary?.startsWith("🎯 ")) {
               type = "habit";
               isRecurring = true;
-              recurringType = "daily";
+              // Try to detect recurring type from recurrence rules or default to daily
+              if (event.recurrence && event.recurrence.length > 0) {
+                const rrule = event.recurrence[0];
+                if (rrule.includes("FREQ=DAILY")) {
+                  recurringType = "daily";
+                } else if (rrule.includes("FREQ=WEEKLY")) {
+                  if (rrule.includes("BYDAY=MO")) recurringType = "monday";
+                  else if (rrule.includes("BYDAY=TU"))
+                    recurringType = "tuesday";
+                  else if (rrule.includes("BYDAY=WE"))
+                    recurringType = "wednesday";
+                  else if (rrule.includes("BYDAY=TH"))
+                    recurringType = "thursday";
+                  else if (rrule.includes("BYDAY=FR")) recurringType = "friday";
+                  else if (rrule.includes("BYDAY=SA"))
+                    recurringType = "saturday";
+                  else if (rrule.includes("BYDAY=SU")) recurringType = "sunday";
+                  else recurringType = "weekly";
+                } else if (rrule.includes("FREQ=MONTHLY")) {
+                  recurringType = "monthly";
+                }
+              } else {
+                recurringType = "daily"; // Default fallback
+              }
               cleanName = event.summary.substring(2).trim(); // Remove emoji and space
             } else if (event.summary?.startsWith("✅ ")) {
               type = "task";
@@ -259,16 +359,30 @@ function HabitApp() {
               type: type,
               remindBeforeMinutes: 0,
               isRecurring,
-              recurringType,
+              recurringType: recurringType as
+                | "none"
+                | "daily"
+                | "weekly"
+                | "monthly"
+                | "monday"
+                | "tuesday"
+                | "wednesday"
+                | "thursday"
+                | "friday"
+                | "saturday"
+                | "sunday"
+                | undefined,
             };
 
             uniqueEvents.set(uniqueKey, habitData);
             console.log(
-              `✅ Added unique event: ${cleanName} (${uniqueKey}, type: ${type})`
+              `✅ Added unique event: ${cleanName} (${uniqueKey}, type: ${type}, recurring: ${
+                recurringType || "none"
+              })`
             );
           });
 
-        // Convert Map values to array (this was the missing step!)
+        // Convert Map values to array
         const finalEvents = Array.from(uniqueEvents.values());
 
         // IMPORTANT: Load existing completedDates from localStorage for calendar events
@@ -440,7 +554,9 @@ function HabitApp() {
     // Additional debug: log all habit IDs to spot patterns
     console.log(
       "📋 All habit IDs:",
-      uniqueHabits.map((h) => `${h.name} (${h.id})`)
+      uniqueHabits.map(
+        (h) => `${h.name} (${h.id}) - ${h.recurringType || "none"}`
+      )
     );
 
     return uniqueHabits;
@@ -450,37 +566,20 @@ function HabitApp() {
     ? new Date(selectedDate).toDateString()
     : todayDateString;
 
-  // FIXED: Better filtering for selected date habits - prevents duplicates
+  // ENHANCED: Better filtering for selected date habits using new recurring logic
   const habitsForSelectedDate = useMemo(() => {
     console.log(`🗓️ Filtering habits for date: ${selectedDateString}`);
     console.log(`📊 Total allHabits: ${allHabits.length}`);
 
     const filtered = allHabits.filter((habit) => {
-      const habitDate = new Date(habit.dateTime).toDateString();
+      const shouldShow = shouldHabitAppearOnDate(habit, selectedDateString);
 
-      // For recurring daily habits, show on every day from the start date onwards
-      if (habit.isRecurring && habit.recurringType === "daily") {
-        const startDate = new Date(habit.dateTime);
-        const checkDate = new Date(selectedDateString);
-
-        // Reset times to compare dates only
-        startDate.setHours(0, 0, 0, 0);
-        checkDate.setHours(0, 0, 0, 0);
-
-        const shouldShow = checkDate >= startDate;
-        console.log(
-          `📅 Recurring habit "${
-            habit.name
-          }": start=${startDate.toDateString()}, check=${checkDate.toDateString()}, show=${shouldShow}`
-        );
-        return shouldShow;
-      }
-
-      // For non-recurring habits, tasks, and events, match exact date
-      const shouldShow = habitDate === selectedDateString;
       console.log(
-        `📅 Non-recurring "${habit.name}": date=${habitDate}, target=${selectedDateString}, show=${shouldShow}`
+        `📅 Habit "${habit.name}" (${habit.recurringType || "none"}): ${
+          shouldShow ? "SHOW" : "HIDE"
+        } for ${selectedDateString}`
       );
+
       return shouldShow;
     });
 
@@ -566,24 +665,29 @@ function HabitApp() {
         const startDate = new Date(data.dateTime);
         startDate.setHours(0, 0, 0, 0); // Reset to start of day for consistent date calculation
 
-        // Create daily recurring habit for habits, single entry for tasks/events
-        if (data.type === "habit") {
-          const recurringHabit = createDailyRecurringHabit(data, startDate);
+        // Create recurring habit for habits with recurrence, single entry for non-recurring or tasks/events
+        if (
+          data.type === "habit" &&
+          data.isRecurring &&
+          data.recurringType &&
+          data.recurringType !== "none"
+        ) {
+          const recurringHabit = createRecurringHabit(data, startDate);
 
           // SYNC TO GOOGLE CALENDAR if connected
           if (accessToken && isCalendarConnected) {
             try {
-              // The createCalendarEvent function will automatically handle next-day scheduling
+              // The createCalendarEvent function will automatically handle next-day scheduling and recurrence
               const calendarEvent = await createCalendarEvent(accessToken, {
                 name: recurringHabit.name,
                 description:
                   recurringHabit.description ||
-                  `Daily habit: ${recurringHabit.name}`,
+                  `Recurring habit: ${recurringHabit.name}`,
                 dateTime: recurringHabit.dateTime, // This will be auto-adjusted in the Google Calendar function
                 remindBeforeMinutes: recurringHabit.remindBeforeMinutes || 0,
                 type: "habit",
                 isRecurring: true,
-                recurringType: "daily",
+                recurringType: recurringHabit.recurringType,
               });
 
               // Return the habit with Google Calendar ID and our custom properties
@@ -599,7 +703,7 @@ function HabitApp() {
                 ? " (automatically moved to next day)"
                 : "";
               console.log(
-                `✅ Created and synced daily recurring habit to Google Calendar${adjustmentMsg}`
+                `✅ Created and synced recurring habit to Google Calendar${adjustmentMsg}`
               );
             } catch (calendarError) {
               console.error(
@@ -617,9 +721,11 @@ function HabitApp() {
             setHabits((prev) => [...prev, recurringHabit]);
           }
 
-          console.log(`✅ Created daily recurring habit`);
+          console.log(
+            `✅ Created recurring habit with type: ${data.recurringType}`
+          );
         }
-        // For tasks and events, create single entry (unchanged)
+        // For non-recurring habits, tasks and events, create single entry
         else {
           const newItem: Habit = {
             ...data,
@@ -627,6 +733,8 @@ function HabitApp() {
             completedDates: [],
             createdAt: new Date().toISOString(),
             type: data.type || "event",
+            isRecurring: data.isRecurring || false,
+            recurringType: data.recurringType || undefined,
           };
 
           // Sync to Google Calendar if connected (auto-scheduling will be handled there)
@@ -638,6 +746,8 @@ function HabitApp() {
                 dateTime: data.dateTime, // This will be auto-adjusted in the Google Calendar function
                 remindBeforeMinutes: data.remindBeforeMinutes || 0,
                 type: data.type || "event",
+                isRecurring: data.isRecurring,
+                recurringType: data.recurringType,
               });
 
               newItem.id = `gcal-${calendarEvent.id}`;
@@ -692,7 +802,7 @@ function HabitApp() {
       accessToken,
       isCalendarConnected,
       setCalendarEvents,
-      createDailyRecurringHabit,
+      createRecurringHabit,
     ]
   );
 
@@ -712,8 +822,8 @@ function HabitApp() {
             dateTime: data.dateTime,
             remindBeforeMinutes: data.remindBeforeMinutes || 0,
             type: data.type || editingItem.type || "event",
-            isRecurring: editingItem.isRecurring,
-            recurringType: editingItem.recurringType,
+            isRecurring: data.isRecurring || editingItem.isRecurring,
+            recurringType: data.recurringType || editingItem.recurringType,
           });
 
           setCalendarEvents((prev) =>
@@ -836,7 +946,9 @@ function HabitApp() {
               ? currentCompleted.filter((d) => d !== targetDateString)
               : [...currentCompleted, targetDateString];
 
-            console.log(`📋 Event: ${event.name}`);
+            console.log(
+              `📋 Event: ${event.name} (${event.recurringType || "none"})`
+            );
             console.log(`📅 Previous completed dates:`, currentCompleted);
             console.log(`📅 New completed dates:`, newCompletedDates);
             console.log(
@@ -878,7 +990,7 @@ function HabitApp() {
             ? h.completedDates.filter((d) => d !== targetDateString)
             : [...h.completedDates, targetDateString];
 
-          console.log(`📋 Habit: ${h.name}`);
+          console.log(`📋 Habit: ${h.name} (${h.recurringType || "none"})`);
           console.log(`📅 Previous completed dates:`, h.completedDates);
           console.log(`📅 New completed dates:`, newCompletedDates);
           console.log(
@@ -1001,7 +1113,7 @@ function HabitApp() {
           isOpen={isFormOpen}
           onClose={handleCloseForm}
           onSubmit={handleFormSubmit}
-          initialDate={selectedDate}
+          initialDate={selectedDate} // This is important
           editingItem={editingItem}
           defaultTab={editingItem?.type || "habit"}
         />
