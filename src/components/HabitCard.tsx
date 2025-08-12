@@ -528,26 +528,6 @@ export default function HabitCard({
     }
   };
 
-  // FIXED: Create habit for editing with selected date
-  const createHabitForEditing = () => {
-    // Create a new DateTime for the selected date while preserving the original time
-    const originalDateTime = new Date(habit.dateTime);
-    const selectedDateTime = selectedDate ? new Date(selectedDate) : new Date();
-    
-    // Set the selected date but keep the original time
-    selectedDateTime.setHours(originalDateTime.getHours());
-    selectedDateTime.setMinutes(originalDateTime.getMinutes());
-    selectedDateTime.setSeconds(originalDateTime.getSeconds());
-    selectedDateTime.setMilliseconds(originalDateTime.getMilliseconds());
-
-    return {
-      ...habit,
-      dateTime: selectedDateTime.toISOString(),
-      // Also pass the selected date as a separate property for form initialization
-      selectedDate: selectedDate || new Date().toISOString().split("T")[0],
-    };
-  };
-
   return (
     <div
       className={`group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${getCardStyle()}`}
@@ -705,13 +685,11 @@ export default function HabitCard({
           {!isDefaultTimeHabit && (
             <button
               onClick={() => {
-                // FIXED: Use the new function to create habit with selected date
-                const habitToEdit = createHabitForEditing();
-                console.log("🔧 Editing habit with selected date:", {
-                  originalDate: habit.dateTime,
-                  selectedDate: selectedDate,
-                  editingDate: habitToEdit.dateTime,
-                });
+                const habitToEdit = {
+                  ...habit,
+                  selectedDate:
+                    selectedDate || new Date().toISOString().split("T")[0],
+                };
                 onEdit(habitToEdit);
               }}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110"
