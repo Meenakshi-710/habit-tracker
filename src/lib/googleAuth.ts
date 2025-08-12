@@ -157,7 +157,10 @@ export const getAuthTokenFromExtension = (): Promise<string> => {
       { url: authUrl, interactive: true },
       (redirectUrl) => {
         if (chrome.runtime.lastError || !redirectUrl) {
-          console.error("OAuth flow error:", chrome.runtime.lastError);
+          console.error(
+            "OAuth flow error:",
+            chrome.runtime.lastError?.message || chrome.runtime.lastError || "Unknown error"
+          );
           reject(chrome.runtime.lastError || new Error("No redirect URL returned"));
           return;
         }

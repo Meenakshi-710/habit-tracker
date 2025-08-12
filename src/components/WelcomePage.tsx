@@ -95,11 +95,6 @@ const WelcomePage = ({ onGetStarted }: WelcomePageProps) => {
           {/* Subtle gradient overlay on hover */}
           <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 to-purple-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </button>
-
-        {/* Theme preference hint */}
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
-          Theme preference will be saved for your next visit
-        </p>
       </div>
 
       {/* Subtle background decoration */}
