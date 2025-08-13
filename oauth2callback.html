@@ -1,24 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>OAuth Redirect</title>
+  <meta charset="UTF-8">
+  <title>OAuth Callback</title>
 </head>
 <body>
   <script>
-    // Send OAuth data to your extension
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code'); // or token, depending on your flow
-
-    if (code) {
-      // Send to extension
-      chrome.runtime.sendMessage(
-        '<YOUR_EXTENSION_ID>', // Replace with your current dev ID
-        { type: 'oauth2_code', code }
-      );
-    }
-
-    // Optional: Close the page automatically
-    window.close();
+    window.onload = function() {
+      const hash = window.location.hash;
+      if (hash) {
+        window.opener.postMessage(hash, '*');
+        window.close();
+      }
+    };
   </script>
 </body>
 </html>
