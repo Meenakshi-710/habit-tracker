@@ -226,59 +226,59 @@ export default function HabitForm({
   }, [date, time]);
 
   useEffect(() => {
-  if (isOpen) {
-    const today = new Date().toISOString().split("T")[0];
+    if (isOpen) {
+      const today = new Date().toISOString().split("T")[0];
 
-    if (editingItem) {
-      setTitle(editingItem.name || editingItem.title || "");
-      setDescription(editingItem.description || "");
-      setCategory(editingItem.category || categories[0].name);
-      setColor(editingItem.color || colors[0]);
-      setRemindBefore(editingItem.remindBeforeMinutes ?? 0);
-      setShowReminderOptions((editingItem.remindBeforeMinutes ?? 0) > 0);
-      setActiveTab(editingItem.type || "habit");
+      if (editingItem) {
+        setTitle(editingItem.name || editingItem.title || "");
+        setDescription(editingItem.description || "");
+        setCategory(editingItem.category || categories[0].name);
+        setColor(editingItem.color || colors[0]);
+        setRemindBefore(editingItem.remindBeforeMinutes ?? 0);
+        setShowReminderOptions((editingItem.remindBeforeMinutes ?? 0) > 0);
+        setActiveTab(editingItem.type || "habit");
 
-      if (editingItem.recurringType) {
-        setRecurringType(editingItem.recurringType);
-      } else if (editingItem.isRecurring) {
-        setRecurringType("daily");
-      } else {
-        setRecurringType("none");
-      }
-
-      if ("dateTime" in editingItem && editingItem.dateTime) {
-        const { localDate, localTime } = parseDateTime(editingItem.dateTime);
-        setDate(localDate);
-        setTime(localTime);
-      } else if (editingItem.selectedDate) {
-        // Use the selectedDate if it exists
-        setDate(editingItem.selectedDate);
-        // Set a default time if not provided
-        if (editingItem.dateTime) {
-          const { localTime } = parseDateTime(editingItem.dateTime);
-          setTime(localTime);
+        if (editingItem.recurringType) {
+          setRecurringType(editingItem.recurringType);
+        } else if (editingItem.isRecurring) {
+          setRecurringType("daily");
         } else {
-          setTime("09:00"); // Default time
+          setRecurringType("none");
         }
+
+        if ("dateTime" in editingItem && editingItem.dateTime) {
+          const { localDate, localTime } = parseDateTime(editingItem.dateTime);
+          setDate(localDate);
+          setTime(localTime);
+        } else if (editingItem.selectedDate) {
+          // Use the selectedDate if it exists
+          setDate(editingItem.selectedDate);
+          // Set a default time if not provided
+          if (editingItem.dateTime) {
+            const { localTime } = parseDateTime(editingItem.dateTime);
+            setTime(localTime);
+          } else {
+            setTime("09:00"); // Default time
+          }
+        }
+      } else {
+        setTitle("");
+        setDescription("");
+        setCategory(categories[0].name);
+        setColor(colors[0]);
+        setDate(initialDate || today);
+        setTime("");
+        setRemindBefore(0);
+        setRecurringType("none");
+        setShowReminderOptions(false);
+        setShowRecurringOptions(false);
+        setActiveTab(defaultTab);
       }
-    } else {
-      setTitle("");
-      setDescription("");
-      setCategory(categories[0].name);
-      setColor(colors[0]);
-      setDate(initialDate || today);
-      setTime("");
-      setRemindBefore(0);
-      setRecurringType("none");
-      setShowReminderOptions(false);
-      setShowRecurringOptions(false);
-      setActiveTab(defaultTab);
+      setErrors({});
+      setShowTimeWarning(false);
+      setAdjustedDateTime(null);
     }
-    setErrors({});
-    setShowTimeWarning(false);
-    setAdjustedDateTime(null);
-  }
-}, [isOpen, editingItem, initialDate, defaultTab]);
+  }, [isOpen, editingItem, initialDate, defaultTab]);
 
   useEffect(() => {
     if (isOpen) {
@@ -670,18 +670,21 @@ export default function HabitForm({
                 <button
                   type="button"
                   onClick={handleBellClick}
-                  className={`p-2 rounded-full transition-colors ${
-                    showReminderOptions || remindBefore > 0
-                      ? "bg-pink-100 text-pink-600 hover:bg-pink-200"
-                      : `${
-                          isDark
-                            ? "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                        }`
-                  }`}
+                  className={`
+    p-2 rounded-full transition-colors
+    ${
+      showReminderOptions || remindBefore > 0
+        ? "bg-pink-100 text-pink-600 hover:bg-pink-200"
+        : isDark
+        ? "bg-gray-800 text-gray-400 hover:bg-gray-700"
+        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+    }
+    motion-preset-seesaw motion-duration-1000
+  `}
                 >
                   🔔
                 </button>
+
                 {remindBefore >= 0 && (
                   <span
                     className={`text-sm font-medium ${

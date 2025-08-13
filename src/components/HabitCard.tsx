@@ -373,7 +373,12 @@ export default function HabitCard({
 
     // Resolve a component and render it (so props like size/className apply)
     const Icon = resolveCategoryIcon(habit.category);
-    return <Icon size={16} className="text-pink-600 dark:text-pink-400" />;
+    return (
+      <Icon
+        size={16}
+        className="text-pink-600 dark:text-pink-400 hover:motion-rotate-in-[0.5turn]"
+      />
+    );
   };
 
   // Get type label and icon
@@ -530,7 +535,7 @@ export default function HabitCard({
 
   return (
     <div
-      className={`group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${getCardStyle()}`}
+      className={`group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] motion-preset-bounce motion-duration-2000 ${getCardStyle()}`}
     >
       {/* Status indicator */}
       <div
@@ -692,7 +697,7 @@ export default function HabitCard({
                 };
                 onEdit(habitToEdit);
               }}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110"
+              className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:motion-preset-seesaw"
               title={`Edit ${
                 isEvent || isGoogleCalendarEvent ? "event" : "habit"
               }`}
@@ -707,7 +712,7 @@ export default function HabitCard({
                 onDelete(habit.id);
               }
             }}
-            className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110"
+            className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:motion-preset-seesaw"
             title={`Delete ${
               isEvent || isGoogleCalendarEvent ? "event" : "habit"
             }`}
